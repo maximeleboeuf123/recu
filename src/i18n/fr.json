@@ -1,0 +1,66 @@
+{
+  "app": { "name": "Récu", "tagline": "Vos reçus, enfin en ordre." },
+  "nav": { "home": "Accueil", "review": "À réviser", "ledger": "Grand livre", "settings": "Paramètres" },
+  "auth": {
+    "signin": "Se connecter avec Google",
+    "signout": "Se déconnecter",
+    "welcome": "Bienvenue sur Récu",
+    "subtitle": "Vos reçus, enfin organisés."
+  },
+  "home": {
+    "capture_photo": "Photographier un reçu",
+    "upload_file": "Téléverser un fichier",
+    "pending_zero": "Aucun reçu en attente",
+    "pending_one": "{{count}} reçu en attente",
+    "pending_other": "{{count}} reçus en attente",
+    "recent": "Reçus récents",
+    "no_recent": "Aucun reçu pour l'instant"
+  },
+  "review": {
+    "title": "À réviser",
+    "empty": "Aucun reçu à réviser",
+    "empty_sub": "Photographiez un reçu ou transférez une facture",
+    "confirm": "Confirmer",
+    "skip": "Ignorer"
+  },
+  "ledger": {
+    "title": "Grand livre",
+    "search": "Rechercher...",
+    "empty": "Aucun reçu pour l'instant",
+    "export": "Exporter"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "dimensions": "Mes dimensions",
+    "recurring": "Entrées récurrentes",
+    "email_inbox": "Adresse de réception",
+    "email_inbox_sub": "Transférez vos factures à cette adresse",
+    "drive": "Google Drive",
+    "drive_connected": "Connecté",
+    "drive_disconnected": "Non connecté",
+    "language": "Langue",
+    "plan": "Forfait",
+    "plan_free": "Gratuit"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue"
+  },
+  "receipt": {
+    "loading": "Chargement du reçu..."
+  },
+  "export": {
+    "title": "Exporter",
+    "coming_soon": "Fonctionnalité disponible bientôt."
+  },
+  "privacy": {
+    "title": "Politique de confidentialité",
+    "last_updated": "Dernière mise à jour : 30 avril 2026"
+  },
+  "terms": {
+    "title": "Conditions d'utilisation",
+    "last_updated": "Dernière mise à jour : 30 avril 2026"
+  }
+}

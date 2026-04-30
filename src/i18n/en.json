@@ -1,0 +1,66 @@
+{
+  "app": { "name": "Récu", "tagline": "Your receipts, finally organized." },
+  "nav": { "home": "Home", "review": "Review", "ledger": "Ledger", "settings": "Settings" },
+  "auth": {
+    "signin": "Sign in with Google",
+    "signout": "Sign out",
+    "welcome": "Welcome to Récu",
+    "subtitle": "Your receipts, finally organized."
+  },
+  "home": {
+    "capture_photo": "Photograph a receipt",
+    "upload_file": "Upload a file",
+    "pending_zero": "No receipts pending",
+    "pending_one": "{{count}} receipt pending",
+    "pending_other": "{{count}} receipts pending",
+    "recent": "Recent receipts",
+    "no_recent": "No receipts yet"
+  },
+  "review": {
+    "title": "Review Queue",
+    "empty": "Nothing to review",
+    "empty_sub": "Photograph a receipt or forward an invoice",
+    "confirm": "Confirm",
+    "skip": "Skip"
+  },
+  "ledger": {
+    "title": "Ledger",
+    "search": "Search...",
+    "empty": "No receipts yet",
+    "export": "Export"
+  },
+  "settings": {
+    "title": "Settings",
+    "dimensions": "My Dimensions",
+    "recurring": "Recurring Entries",
+    "email_inbox": "Email inbox address",
+    "email_inbox_sub": "Forward invoices to this address",
+    "drive": "Google Drive",
+    "drive_connected": "Connected",
+    "drive_disconnected": "Not connected",
+    "language": "Language",
+    "plan": "Plan",
+    "plan_free": "Free"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "error": "Something went wrong"
+  },
+  "receipt": {
+    "loading": "Loading receipt..."
+  },
+  "export": {
+    "title": "Export",
+    "coming_soon": "This feature is coming soon."
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "last_updated": "Last updated: April 30, 2026"
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "last_updated": "Last updated: April 30, 2026"
+  }
+}

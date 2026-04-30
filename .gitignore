@@ -1,0 +1,28 @@
+# env — NEVER commit secrets
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Vite / build
+dist
+dist-ssr
+
+# Dependencies
+node_modules
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
