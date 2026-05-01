@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, X, Plus, ChevronDown, ChevronRight } from 'lucide-react'
@@ -28,28 +28,20 @@ const PRESETS = [
 export default function DimensionsPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { accountsWithCategories, loading, addAccount, removeAccount, addCategory, removeCategory, applyPreset } = useDimensions()
-  const [pickerPresetKey, setPickerPresetKey] = useState(null)
+  const { accountsWithCategories, loading, removeAccount, addCategory, removeCategory, applyPreset } = useDimensions()
+  const [configSheet, setConfigSheet] = useState(null) // null | { accountName, categories[] }
   const [toast, setToast] = useState(null)
 
   const lang = i18n.language === 'en' ? 'en' : 'fr'
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500) }
 
-  const handlePresetAdd = (preset) => {
-    if (accountsWithCategories.length === 0) {
-      // No accounts yet — create immediately with preset's default name
-      applyPreset(null, preset[lang].accountName, preset[lang].categories)
-      showToast(lang === 'en' ? `"${preset[lang].accountName}" created` : `« ${preset[lang].accountName} » créé`)
-    } else {
-      // Show account picker
-      setPickerPresetKey(pickerPresetKey === preset.key ? null : preset.key)
+  const handleCreate = async ({ accountName, categories }) => {
+    const ok = await applyPreset(null, accountName.trim(), categories)
+    if (ok) {
+      showToast(lang === 'en' ? `"${accountName}" created` : `« ${accountName} » créé`)
+      setConfigSheet(null)
     }
-  }
-
-  const handlePickAccount = async (preset, accountId, accountName) => {
-    setPickerPresetKey(null)
-    const ok = await applyPreset(accountId, accountName, preset[lang].categories)
-    if (ok) showToast(lang === 'en' ? `Categories added to "${accountName}"` : `Catégories ajoutées à « ${accountName} »`)
+    return ok
   }
 
   if (loading) {
@@ -57,6 +49,18 @@ export default function DimensionsPage() {
       <div className="flex items-center justify-center py-20">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
+    )
+  }
+
+  if (configSheet) {
+    return (
+      <AccountConfigSheet
+        lang={lang}
+        initialName={configSheet.accountName}
+        initialCategories={configSheet.categories}
+        onBack={() => setConfigSheet(null)}
+        onCreate={handleCreate}
+      />
     )
   }
 
@@ -76,57 +80,26 @@ export default function DimensionsPage() {
         </p>
         <p className="text-xs text-muted mb-3">
           {lang === 'en'
-            ? 'Add categories to an existing account or create a new one.'
-            : 'Ajoutez des catégories à un compte existant ou créez-en un nouveau.'}
+            ? 'Creates a new account with pre-filled categories you can edit before confirming.'
+            : 'Crée un nouveau compte avec des catégories préremplies que vous pouvez modifier avant de confirmer.'}
         </p>
         <div className="bg-surface rounded-[8px] border border-border divide-y divide-border">
           {PRESETS.map((preset) => {
             const p = preset[lang]
-            const isOpen = pickerPresetKey === preset.key
             return (
-              <div key={preset.key}>
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <span className="text-base flex-shrink-0">{preset.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1A1A18]">{p.label}</p>
-                    <p className="text-xs text-muted">{p.categories.length} {lang === 'en' ? 'categories' : 'catégories'}</p>
-                  </div>
-                  <button
-                    onClick={() => handlePresetAdd(preset)}
-                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 active:scale-[0.97] transition-colors"
-                  >
-                    <Plus size={12} />
-                    {lang === 'en' ? 'Add' : 'Ajouter'}
-                  </button>
+              <div key={preset.key} className="flex items-center gap-3 px-4 py-3">
+                <span className="text-base flex-shrink-0">{preset.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#1A1A18]">{p.label}</p>
+                  <p className="text-xs text-muted">{p.categories.length} {lang === 'en' ? 'categories' : 'catégories'}</p>
                 </div>
-
-                {/* Account picker — expands when accounts already exist */}
-                {isOpen && (
-                  <div className="border-t border-border/60 bg-background/50 px-4 py-2 space-y-1">
-                    <p className="text-xs text-muted py-1">
-                      {lang === 'en' ? 'Add categories to:' : 'Ajouter les catégories à :'}
-                    </p>
-                    {/* Create new option */}
-                    <button
-                      onClick={() => handlePickAccount(preset, null, p.accountName)}
-                      className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-[6px] text-sm text-primary hover:bg-primary/5 transition-colors"
-                    >
-                      <Plus size={13} className="flex-shrink-0" />
-                      {lang === 'en' ? `Create "${p.accountName}"` : `Créer « ${p.accountName} »`}
-                    </button>
-                    {/* Existing accounts */}
-                    {accountsWithCategories.map((acc) => (
-                      <button
-                        key={acc.id}
-                        onClick={() => handlePickAccount(preset, acc.id, acc.name)}
-                        className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-[6px] text-sm text-[#1A1A18] hover:bg-surface transition-colors"
-                      >
-                        <span className="flex-1 truncate">{acc.name}</span>
-                        <span className="text-xs text-muted flex-shrink-0">{acc.categories.length} cat.</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <button
+                  onClick={() => setConfigSheet({ accountName: p.accountName, categories: [...p.categories] })}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 active:scale-[0.97] transition-colors"
+                >
+                  <Plus size={12} />
+                  {lang === 'en' ? 'Add' : 'Ajouter'}
+                </button>
               </div>
             )
           })}
@@ -157,11 +130,13 @@ export default function DimensionsPage() {
           )}
         </div>
 
-        <AddRow
-          placeholder={lang === 'en' ? 'New account...' : 'Nouveau compte...'}
-          onAdd={addAccount}
-          className="mt-3"
-        />
+        <button
+          onClick={() => setConfigSheet({ accountName: '', categories: [] })}
+          className="mt-3 w-full flex items-center justify-center gap-2 text-sm text-primary py-2.5 bg-surface rounded-[8px] border border-dashed border-primary/30 px-4 hover:opacity-70 transition-opacity"
+        >
+          <Plus size={13} />
+          {lang === 'en' ? 'New account...' : 'Nouveau compte...'}
+        </button>
       </section>
 
       {toast && (
@@ -169,6 +144,148 @@ export default function DimensionsPage() {
           {toast}
         </div>
       )}
+    </div>
+  )
+}
+
+function AccountConfigSheet({ lang, initialName, initialCategories, onBack, onCreate }) {
+  const [accountName, setAccountName] = useState(initialName)
+  const [categories, setCategories] = useState(initialCategories)
+  const [newCat, setNewCat] = useState('')
+  const [saving, setSaving] = useState(false)
+  const inputRef = useRef(null)
+
+  const isManual = initialCategories.length === 0
+
+  const addCat = () => {
+    const val = newCat.trim()
+    if (!val) return
+    if (!categories.includes(val)) setCategories((prev) => [...prev, val])
+    setNewCat('')
+    inputRef.current?.focus()
+  }
+
+  const removeCat = (cat) => setCategories((prev) => prev.filter((c) => c !== cat))
+
+  const loadPreset = (preset) => {
+    const cats = preset[lang].categories
+    setCategories((prev) => {
+      const existing = new Set(prev)
+      return [...prev, ...cats.filter((c) => !existing.has(c))]
+    })
+    if (!accountName.trim()) setAccountName(preset[lang].accountName)
+  }
+
+  const handleCreate = async () => {
+    if (!accountName.trim()) return
+    setSaving(true)
+    await onCreate({ accountName, categories })
+    setSaving(false)
+  }
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-6 pb-24 space-y-6">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-border/30 transition-colors">
+          <ArrowLeft size={18} className="text-muted" />
+        </button>
+        <h1 className="text-xl font-bold text-[#1A1A18]">
+          {lang === 'en' ? 'New account' : 'Nouveau compte'}
+        </h1>
+      </div>
+
+      {/* Account name */}
+      <section>
+        <p className="text-xs text-muted uppercase tracking-wide font-medium mb-2">
+          {lang === 'en' ? 'Account name' : 'Nom du compte'}
+        </p>
+        <input
+          autoFocus={isManual}
+          value={accountName}
+          onChange={(e) => setAccountName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.focus()}
+          placeholder={lang === 'en' ? 'e.g. Business, Rental Property 1…' : 'ex. Commerce, Bien locatif 1…'}
+          className="w-full bg-surface border border-border rounded-[8px] px-4 py-2.5 text-sm text-[#1A1A18] placeholder:text-muted focus:outline-none focus:border-primary/50 transition-colors"
+        />
+      </section>
+
+      {/* Categories */}
+      <section>
+        <p className="text-xs text-muted uppercase tracking-wide font-medium mb-2">
+          {lang === 'en' ? 'Categories' : 'Catégories'}
+        </p>
+        <div className="bg-surface rounded-[8px] border border-border overflow-hidden">
+          {categories.length === 0 && (
+            <p className="text-xs text-muted px-4 py-3 italic">
+              {lang === 'en' ? 'No categories yet.' : 'Aucune catégorie.'}
+            </p>
+          )}
+          {categories.map((cat) => (
+            <div key={cat} className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 last:border-0">
+              <span className="text-sm text-[#1A1A18]">{cat}</span>
+              <button
+                onClick={() => removeCat(cat)}
+                className="w-5 h-5 flex items-center justify-center rounded-full text-muted hover:text-error hover:bg-error/10 transition-colors"
+              >
+                <X size={11} />
+              </button>
+            </div>
+          ))}
+
+          {/* Inline add category */}
+          <div className="flex items-center gap-2 px-4 py-2.5 border-t border-dashed border-border">
+            <input
+              ref={inputRef}
+              value={newCat}
+              onChange={(e) => setNewCat(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addCat() }}
+              placeholder={lang === 'en' ? 'Add a category…' : 'Ajouter une catégorie…'}
+              className="flex-1 text-sm bg-transparent border-none focus:outline-none text-[#1A1A18] placeholder:text-muted min-w-0"
+            />
+            {newCat.trim() && (
+              <button onClick={addCat} className="text-xs text-primary font-medium flex-shrink-0">
+                OK
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Preset import — shown for manual accounts or always visible */}
+      <section>
+        <p className="text-xs text-muted uppercase tracking-wide font-medium mb-2">
+          {lang === 'en' ? 'Import from a preset' : 'Importer depuis un pack'}
+        </p>
+        <div className="bg-surface rounded-[8px] border border-border divide-y divide-border">
+          {PRESETS.map((preset) => {
+            const p = preset[lang]
+            return (
+              <button
+                key={preset.key}
+                onClick={() => loadPreset(preset)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-background transition-colors text-left"
+              >
+                <span className="text-base flex-shrink-0">{preset.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#1A1A18]">{p.label}</p>
+                  <p className="text-xs text-muted">{p.categories.length} {lang === 'en' ? 'categories' : 'catégories'}</p>
+                </div>
+                <Plus size={14} className="text-primary flex-shrink-0" />
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      <button
+        onClick={handleCreate}
+        disabled={!accountName.trim() || saving}
+        className="w-full py-3 text-sm bg-primary text-white rounded-[8px] font-medium active:scale-[0.98] transition-transform disabled:opacity-50"
+      >
+        {saving
+          ? (lang === 'en' ? 'Creating…' : 'Création…')
+          : (lang === 'en' ? 'Create account' : 'Créer le compte')}
+      </button>
     </div>
   )
 }
@@ -213,10 +330,9 @@ function AccountBlock({ account, lang, onRemoveAccount, onAddCategory, onRemoveC
             </div>
           ))}
           <div className="pl-10 pr-4">
-            <AddRow
+            <InlineAddCategory
               placeholder={lang === 'en' ? 'New category...' : 'Nouvelle catégorie...'}
               onAdd={onAddCategory}
-              compact
             />
           </div>
         </div>
@@ -225,50 +341,33 @@ function AccountBlock({ account, lang, onRemoveAccount, onAddCategory, onRemoveC
   )
 }
 
-function AddRow({ placeholder, onAdd, compact = false, className = '' }) {
+function InlineAddCategory({ placeholder, onAdd }) {
   const [value, setValue] = useState('')
-  const [showInput, setShowInput] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const handleAdd = async () => {
     if (!value.trim()) return
     setSaving(true)
     const ok = await onAdd(value)
-    if (ok !== false) { setValue(''); setShowInput(false) }
+    if (ok !== false) setValue('')
     setSaving(false)
   }
 
-  if (showInput) {
-    return (
-      <div className={`flex items-center gap-2 py-2.5 ${className}`}>
-        <input
-          autoFocus
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleAdd()
-            if (e.key === 'Escape') { setShowInput(false); setValue('') }
-          }}
-          placeholder={placeholder}
-          className="flex-1 text-sm bg-transparent border-none focus:outline-none text-[#1A1A18] placeholder:text-muted min-w-0"
-        />
-        <button onClick={handleAdd} disabled={!value.trim() || saving} className="text-xs text-primary font-medium disabled:opacity-40 flex-shrink-0">
+  return (
+    <div className="flex items-center gap-2 py-2.5">
+      <Plus size={12} className="text-muted flex-shrink-0" />
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleAdd() }}
+        placeholder={placeholder}
+        className="flex-1 text-sm bg-transparent border-none focus:outline-none text-[#1A1A18] placeholder:text-muted min-w-0"
+      />
+      {value.trim() && (
+        <button onClick={handleAdd} disabled={saving} className="text-xs text-primary font-medium disabled:opacity-40 flex-shrink-0">
           OK
         </button>
-        <button onClick={() => { setShowInput(false); setValue('') }} className="text-xs text-muted flex-shrink-0">✕</button>
-      </div>
-    )
-  }
-
-  return (
-    <button
-      onClick={() => setShowInput(true)}
-      className={`flex items-center gap-2 text-sm text-primary py-2.5 hover:opacity-70 transition-opacity ${
-        compact ? '' : 'w-full bg-surface rounded-[8px] border border-dashed border-primary/30 px-4 justify-center'
-      } ${className}`}
-    >
-      <Plus size={13} />
-      {placeholder}
-    </button>
+      )}
+    </div>
   )
 }
