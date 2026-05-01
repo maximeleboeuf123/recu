@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, X, Plus, ChevronDown, ChevronRight } from 'lucide-react'
@@ -28,7 +28,7 @@ const PRESETS = [
 export default function DimensionsPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { accountsWithCategories, loading, removeAccount, addCategory, removeCategory, applyPreset } = useDimensions()
+  const { accountsWithCategories, loading, removeAccount, addCategory, removeCategory, renameAccount, renameCategory, applyPreset } = useDimensions()
   const [configSheet, setConfigSheet] = useState(null) // null | { accountName, categories[] }
   const [toast, setToast] = useState(null)
 
@@ -118,8 +118,10 @@ export default function DimensionsPage() {
               account={account}
               lang={lang}
               onRemoveAccount={() => removeAccount(account.id)}
+              onRenameAccount={(name) => renameAccount(account.id, name)}
               onAddCategory={(name) => addCategory(account.id, name)}
               onRemoveCategory={(id) => removeCategory(id)}
+              onRenameCategory={(id, name) => renameCategory(id, name)}
             />
           ))}
 
@@ -290,19 +292,23 @@ function AccountConfigSheet({ lang, initialName, initialCategories, onBack, onCr
   )
 }
 
-function AccountBlock({ account, lang, onRemoveAccount, onAddCategory, onRemoveCategory }) {
+function AccountBlock({ account, lang, onRemoveAccount, onRenameAccount, onAddCategory, onRemoveCategory, onRenameCategory }) {
   const [open, setOpen] = useState(true)
 
   return (
     <div className="bg-surface rounded-[8px] border border-border overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 bg-background/40">
-        <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 flex-1 min-w-0">
+        <button onClick={() => setOpen((v) => !v)} className="flex-shrink-0">
           {open
-            ? <ChevronDown size={14} className="text-muted flex-shrink-0" />
-            : <ChevronRight size={14} className="text-muted flex-shrink-0" />}
-          <span className="text-sm font-semibold text-[#1A1A18] truncate">{account.name}</span>
-          <span className="text-xs text-muted flex-shrink-0">{account.categories.length}</span>
+            ? <ChevronDown size={14} className="text-muted" />
+            : <ChevronRight size={14} className="text-muted" />}
         </button>
+        <EditableName
+          value={account.name}
+          onSave={onRenameAccount}
+          className="flex-1 min-w-0 text-sm font-semibold text-[#1A1A18]"
+        />
+        <span className="text-xs text-muted flex-shrink-0 mr-1">{account.categories.length}</span>
         <button
           onClick={onRemoveAccount}
           className="w-6 h-6 flex items-center justify-center rounded-full text-muted hover:text-error hover:bg-error/10 transition-colors flex-shrink-0"
@@ -319,11 +325,15 @@ function AccountBlock({ account, lang, onRemoveAccount, onAddCategory, onRemoveC
             </p>
           )}
           {account.categories.map((cat) => (
-            <div key={cat.id} className="flex items-center justify-between pl-10 pr-4 py-2.5">
-              <span className="text-sm text-[#1A1A18]">{cat.name}</span>
+            <div key={cat.id} className="flex items-center gap-2 pl-10 pr-4 py-2.5">
+              <EditableName
+                value={cat.name}
+                onSave={(name) => onRenameCategory(cat.id, name)}
+                className="flex-1 min-w-0 text-sm text-[#1A1A18]"
+              />
               <button
                 onClick={() => onRemoveCategory(cat.id)}
-                className="w-5 h-5 flex items-center justify-center rounded-full text-muted hover:text-error hover:bg-error/10 transition-colors"
+                className="w-5 h-5 flex items-center justify-center rounded-full text-muted hover:text-error hover:bg-error/10 transition-colors flex-shrink-0"
               >
                 <X size={11} />
               </button>
@@ -338,6 +348,41 @@ function AccountBlock({ account, lang, onRemoveAccount, onAddCategory, onRemoveC
         </div>
       )}
     </div>
+  )
+}
+
+function EditableName({ value, onSave, className }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+  const inputRef = useRef(null)
+
+  useEffect(() => { if (editing) inputRef.current?.select() }, [editing])
+
+  const start = () => { setDraft(value); setEditing(true) }
+  const cancel = () => setEditing(false)
+  const save = async () => {
+    if (!draft.trim() || draft.trim() === value) { cancel(); return }
+    await onSave(draft.trim())
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel() }}
+        onBlur={save}
+        className={`bg-transparent border-b border-primary focus:outline-none truncate ${className}`}
+      />
+    )
+  }
+
+  return (
+    <button onClick={start} className={`text-left truncate hover:opacity-70 transition-opacity ${className}`}>
+      {value}
+    </button>
   )
 }
 

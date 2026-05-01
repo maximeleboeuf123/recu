@@ -139,6 +139,89 @@ export function DimensionsProvider({ children }) {
     return true
   }, [])
 
+  // --- renameAccount: update dimension + cascade to receipts labels.property ---
+  const renameAccount = useCallback(async (id, newName) => {
+    const trimmed = newName.trim()
+    if (!trimmed || !userId) return false
+    const account = accountsWithCategories.find((a) => a.id === id)
+    if (!account || account.name === trimmed) return false
+    const oldName = account.name
+
+    setAccountsWithCategories((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, name: trimmed } : a))
+    )
+
+    const { error } = await supabase.from('dimensions').update({ name: trimmed }).eq('id', id)
+    if (error) {
+      console.error('renameAccount:', error.message)
+      setAccountsWithCategories((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, name: oldName } : a))
+      )
+      return false
+    }
+
+    // Cascade: patch receipts where labels.property === oldName
+    const { data: affected } = await supabase
+      .from('receipts')
+      .select('id, labels')
+      .eq('user_id', userId)
+      .filter('labels->>property', 'eq', oldName)
+    if (affected?.length) {
+      await Promise.all(
+        affected.map((r) =>
+          supabase.from('receipts').update({ labels: { ...r.labels, property: trimmed } }).eq('id', r.id)
+        )
+      )
+    }
+    return true
+  }, [userId, accountsWithCategories])
+
+  // --- renameCategory: update dimension + cascade to receipts labels.category ---
+  const renameCategory = useCallback(async (id, newName) => {
+    const trimmed = newName.trim()
+    if (!trimmed || !userId) return false
+    let oldName = null
+    for (const acc of accountsWithCategories) {
+      const cat = acc.categories.find((c) => c.id === id)
+      if (cat) { oldName = cat.name; break }
+    }
+    if (!oldName || oldName === trimmed) return false
+
+    setAccountsWithCategories((prev) =>
+      prev.map((a) => ({
+        ...a,
+        categories: a.categories.map((c) => (c.id === id ? { ...c, name: trimmed } : c)),
+      }))
+    )
+
+    const { error } = await supabase.from('dimensions').update({ name: trimmed }).eq('id', id)
+    if (error) {
+      console.error('renameCategory:', error.message)
+      setAccountsWithCategories((prev) =>
+        prev.map((a) => ({
+          ...a,
+          categories: a.categories.map((c) => (c.id === id ? { ...c, name: oldName } : c)),
+        }))
+      )
+      return false
+    }
+
+    // Cascade: patch receipts where labels.category === oldName
+    const { data: affected } = await supabase
+      .from('receipts')
+      .select('id, labels')
+      .eq('user_id', userId)
+      .filter('labels->>category', 'eq', oldName)
+    if (affected?.length) {
+      await Promise.all(
+        affected.map((r) =>
+          supabase.from('receipts').update({ labels: { ...r.labels, category: trimmed } }).eq('id', r.id)
+        )
+      )
+    }
+    return true
+  }, [userId, accountsWithCategories])
+
   // --- applyPreset: targetAccountId=null → create new account with accountName ---
   const applyPreset = useCallback(async (targetAccountId, accountName, categoryNames) => {
     let accountId = targetAccountId
@@ -188,7 +271,7 @@ export function DimensionsProvider({ children }) {
   return (
     <DimensionsContext.Provider value={{
       accountsWithCategories, loading,
-      addAccount, removeAccount, addCategory, removeCategory, applyPreset,
+      addAccount, removeAccount, addCategory, removeCategory, renameAccount, renameCategory, applyPreset,
     }}>
       {children}
     </DimensionsContext.Provider>
