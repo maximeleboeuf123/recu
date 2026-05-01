@@ -64,6 +64,15 @@ function decodeJwtPayload(token) {
 }
 
 export default async function handler(req, res) {
+  try {
+    return await _handler(req, res)
+  } catch (e) {
+    console.error('Unhandled extract error:', e?.message ?? e)
+    if (!res.headersSent) res.status(500).json({ error: 'internal' })
+  }
+}
+
+async function _handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
   const authHeader = req.headers.authorization
@@ -97,9 +106,21 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'error_rate' })
   }
 
-  const body = req.body ?? await parseBody(req)
-  const { pages, userId: bodyUserId } = body
+  let body
+  try {
+    if (req.body != null) {
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+    } else {
+      body = await parseBody(req)
+    }
+  } catch (e) {
+    console.error('Body parse failed:', e?.message)
+    return res.status(400).json({ error: 'Bad request' })
+  }
+
+  const { pages, userId: bodyUserId } = body ?? {}
   if (!Array.isArray(pages) || pages.length === 0 || bodyUserId !== userId) {
+    console.error('Validation failed:', { hasPages: Array.isArray(pages), count: pages?.length, userMatch: bodyUserId === userId })
     return res.status(400).json({ error: 'Bad request' })
   }
 
