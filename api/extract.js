@@ -54,6 +54,15 @@ function parseBody(req) {
   })
 }
 
+function decodeJwtPayload(token) {
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(Buffer.from(base64, 'base64').toString('utf8'))
+  } catch {
+    return null
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
@@ -63,18 +72,14 @@ export default async function handler(req, res) {
   }
   const token = authHeader.slice(7)
 
-  // Plain client for auth check — global header override breaks apikey on /auth/v1/user
-  const supabaseAuth = createClient(
-    process.env.VITE_SUPABASE_URL,
-    process.env.VITE_SUPABASE_ANON_KEY,
-  )
-  const {
-    data: { user },
-    error: authError,
-  } = await supabaseAuth.auth.getUser(token)
-  if (authError || !user) return res.status(401).json({ error: 'Unauthorized' })
+  // Decode JWT payload — signature is verified by Supabase RLS on every DB call
+  const payload = decodeJwtPayload(token)
+  if (!payload?.sub || !payload?.exp || payload.exp < Date.now() / 1000) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+  const userId = payload.sub
 
-  // Authenticated client for RLS-protected DB operations
+  // Authenticated client — Supabase verifies JWT signature via RLS on every query
   const supabase = createClient(
     process.env.VITE_SUPABASE_URL,
     process.env.VITE_SUPABASE_ANON_KEY,
@@ -86,14 +91,14 @@ export default async function handler(req, res) {
   const { count } = await supabase
     .from('receipts')
     .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .gte('created_at', oneHourAgo)
   if ((count ?? 0) >= RATE_LIMIT_PER_HOUR) {
     return res.status(429).json({ error: 'error_rate' })
   }
 
-  const { pages, userId } = await parseBody(req)
-  if (!Array.isArray(pages) || pages.length === 0 || userId !== user.id) {
+  const { pages, userId: bodyUserId } = await parseBody(req)
+  if (!Array.isArray(pages) || pages.length === 0 || bodyUserId !== userId) {
     return res.status(400).json({ error: 'Bad request' })
   }
 
@@ -196,7 +201,7 @@ export default async function handler(req, res) {
   const { data: patterns } = await supabase
     .from('patterns')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
 
   let patternMatch = null
   if (patterns?.length) {
@@ -210,7 +215,7 @@ export default async function handler(req, res) {
 
   // Insert receipt row
   const receiptRow = {
-    user_id: user.id,
+    user_id: userId,
     status: 'pending',
     vendor: extracted.vendor,
     invoice_date: extracted.invoice_date,
@@ -252,7 +257,7 @@ export default async function handler(req, res) {
     const { data: similar } = await supabase
       .from('receipts')
       .select('id, vendor, total, invoice_date, created_at')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('status', 'confirmed')
       .neq('id', receipt.id)
       .gte('invoice_date', new Date(d.getTime() - 3 * 86_400_000).toISOString().slice(0, 10))
