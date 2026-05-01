@@ -41,7 +41,7 @@ export default function CameraCapture({ onSubmit, onClose }) {
 
   return (
     <div
-      className="fixed inset-x-0 top-0 bg-background z-50 flex flex-col"
+      className="fixed inset-x-0 top-0 bg-background z-[200] flex flex-col"
       style={{ height: '100dvh', paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       <input

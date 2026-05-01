@@ -39,7 +39,21 @@ export default function VendorGroup({
   const visible = receipts.filter((r) => !skippedIds.has(r.id))
   if (!visible.length) return null
 
-  const canBulk = groupCanBulkConfirmed(visible)
+  if (visible.length === 1) {
+    return (
+      <div className="bg-surface border border-border rounded-[8px] overflow-hidden">
+        <div className="p-3">
+          <ReviewCard
+            receipt={visible[0]}
+            mode="review"
+            onConfirm={(id, data, recurring, pattern) => onConfirmOne?.(id, data, recurring, pattern)}
+            onSkip={(id) => onSkipOne?.(id)}
+          />
+        </div>
+      </div>
+    )
+  }
+
   const hasWarnings = groupHasWarnings(visible)
 
   const amounts = visible.map((r) => r.total).filter((v) => v != null)
@@ -94,26 +108,18 @@ export default function VendorGroup({
           </div>
         )}
 
-        {/* Bulk confirm buttons */}
+        {/* Bulk confirm button */}
         <div className="flex gap-2 pt-1">
-          {visible.length > 1 && (
-            <button
-              onClick={handleConfirmAll}
-              className={`flex-1 py-2 text-sm font-medium rounded-[6px] active:scale-[0.98] transition-transform ${
-                hasWarnings
-                  ? 'bg-warning/10 text-warning border border-warning/30'
-                  : 'bg-success/10 text-success border border-success/30'
-              }`}
-            >
-              {hasWarnings && <AlertTriangle size={12} className="inline mr-1" />}
-              {t('review.group_confirm', { count: visible.length })}
-            </button>
-          )}
           <button
-            onClick={() => setExpanded((e) => !e)}
-            className="flex-1 py-2 text-sm font-medium text-primary border border-primary/30 rounded-[6px] active:scale-[0.98] transition-transform"
+            onClick={handleConfirmAll}
+            className={`flex-1 py-2 text-sm font-medium rounded-[6px] active:scale-[0.98] transition-transform ${
+              hasWarnings
+                ? 'bg-warning/10 text-warning border border-warning/30'
+                : 'bg-success/10 text-success border border-success/30'
+            }`}
           >
-            {t('review.group_review')}
+            {hasWarnings && <AlertTriangle size={12} className="inline mr-1" />}
+            {t('review.group_confirm', { count: visible.length })}
           </button>
         </div>
       </div>

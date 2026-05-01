@@ -106,7 +106,7 @@ export default function ReviewPage() {
   const activeGroups = groups.filter((g) => g.receipts.some((r) => !skippedIds.has(r.id)))
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 space-y-4 relative">
+    <div className="max-w-lg mx-auto px-4 py-6 pb-24 space-y-4 relative">
       <h1 className="text-xl font-bold text-[#1A1A18]">{t('review.title')}</h1>
 
       {activeGroups.length === 0 ? (

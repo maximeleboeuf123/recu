@@ -128,7 +128,6 @@ async function _handler(req, res) {
   // Validate files
   let totalBytes = 0
   for (const page of pages) {
-    console.log('page validation:', { mimeType: page?.mimeType, fb64Type: typeof page?.fileBase64, fb64Len: page?.fileBase64?.length ?? 'undef' })
     if (!ALLOWED_TYPES.has(page.mimeType) || !page.fileBase64) {
       return res.status(400).json({ error: 'error_type' })
     }
