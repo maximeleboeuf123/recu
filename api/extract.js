@@ -127,7 +127,7 @@ async function _handler(req, res) {
   // Validate files
   let totalBytes = 0
   for (const page of pages) {
-    if (!ALLOWED_TYPES.has(page.mimeType)) {
+    if (!ALLOWED_TYPES.has(page.mimeType) || !page.fileBase64) {
       return res.status(400).json({ error: 'error_type' })
     }
     const bytes = Math.ceil((page.fileBase64.length * 3) / 4)

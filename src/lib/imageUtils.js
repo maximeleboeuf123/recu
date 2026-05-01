@@ -22,13 +22,21 @@ export function compressImage(dataUrl, mimeType, maxDim = 1920, quality = 0.82) 
       canvas.getContext('2d').drawImage(img, 0, 0, width, height)
       canvas.toBlob(
         (blob) => {
+          if (!blob) {
+            // Canvas couldn't produce a blob (e.g. HEIC on some devices) — pass original through
+            const base64 = dataUrl.split(',')[1] ?? ''
+            resolve({ dataUrl, base64, mimeType: mimeType || 'image/jpeg' })
+            return
+          }
           const reader = new FileReader()
-          reader.onload = (e) =>
+          reader.onload = (e) => {
+            const result = e.target.result ?? ''
             resolve({
-              dataUrl: e.target.result,
-              base64: e.target.result.split(',')[1],
+              dataUrl: result,
+              base64: result.split(',')[1] ?? '',
               mimeType: 'image/jpeg',
             })
+          }
           reader.readAsDataURL(blob)
         },
         'image/jpeg',
