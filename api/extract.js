@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
+import { getServiceClient } from './lib/auth.js'
+import { getValidToken, uploadFileToDrive } from './lib/driveClient.js'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -277,6 +279,45 @@ async function _handler(req, res) {
     return res.status(500).json({ error: 'db_error' })
   }
 
+  // Upload to Drive if user has connected it (best-effort — never blocks the response)
+  let driveUrl = null
+  let driveFileId = null
+  try {
+    const serviceClient = getServiceClient()
+    const { data: userData } = await serviceClient
+      .from('users')
+      .select('drive_inbox_id')
+      .eq('id', userId)
+      .single()
+
+    if (userData?.drive_inbox_id) {
+      const accessToken = await getValidToken(userId, serviceClient)
+      if (accessToken) {
+        const firstPage = pages[0]
+        const ext = firstPage.mimeType === 'application/pdf' ? '.pdf' : '.jpg'
+        const driveFilename = `${filename}${ext}`
+        const uploaded = await uploadFileToDrive(
+          accessToken, driveFilename, firstPage.mimeType, firstPage.fileBase64, userData.drive_inbox_id
+        )
+        driveUrl = uploaded.webViewLink
+        driveFileId = uploaded.id
+
+        // Upload additional pages (multi-page receipts)
+        for (let i = 1; i < pages.length; i++) {
+          const p = pages[i]
+          const pageExt = p.mimeType === 'application/pdf' ? '.pdf' : '.jpg'
+          await uploadFileToDrive(
+            accessToken, `${filename} - p${i + 1}${pageExt}`, p.mimeType, p.fileBase64, userData.drive_inbox_id
+          )
+        }
+
+        await supabase.from('receipts').update({ drive_url: driveUrl, drive_file_id: driveFileId }).eq('id', receipt.id)
+      }
+    }
+  } catch (driveErr) {
+    console.error('Drive upload (non-critical):', driveErr?.message)
+  }
+
   // Duplicate detection: same vendor + same total + invoice_date within 3 days
   let possibleDuplicate = null
   if (extracted.vendor && extracted.total != null && extracted.invoice_date) {
@@ -308,5 +349,6 @@ async function _handler(req, res) {
     confidenceScores,
     patternApplied: !!patternMatch,
     possibleDuplicate,
+    driveUrl,
   })
 }

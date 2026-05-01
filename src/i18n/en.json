@@ -106,6 +106,25 @@
     "plan": "Plan",
     "plan_free": "Free"
   },
+  "drive": {
+    "connect": "Connect Google Drive",
+    "connected": "Google Drive connected",
+    "disconnected": "Not connected",
+    "inbox_ready": "Récu/_Inbox ready",
+    "files_saved": "{{count}} file(s) saved",
+    "last_sync": "Last sync: {{time}} ago",
+    "open_in_drive": "Open in Drive",
+    "disconnect": "Disconnect",
+    "copy_to_folder": "Copy to folder",
+    "new_folder": "New folder...",
+    "copied": "Copied to {{folder}}",
+    "sync_prompt": "You have {{count}} receipts without a Drive file.",
+    "file_unavailable": "File unavailable",
+    "connect_prompt": "Connect Google Drive to save your files",
+    "reconnect": "Reconnect Google Drive",
+    "connecting": "Connecting...",
+    "disconnecting": "Disconnecting..."
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

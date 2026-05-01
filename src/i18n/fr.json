@@ -106,6 +106,25 @@
     "plan": "Forfait",
     "plan_free": "Gratuit"
   },
+  "drive": {
+    "connect": "Connecter Google Drive",
+    "connected": "Google Drive connecté",
+    "disconnected": "Non connecté",
+    "inbox_ready": "Récu/_Inbox prêt",
+    "files_saved": "{{count}} fichier(s) sauvegardé(s)",
+    "last_sync": "Dernière sync : il y a {{time}}",
+    "open_in_drive": "Ouvrir dans Drive",
+    "disconnect": "Déconnecter",
+    "copy_to_folder": "Copier vers un dossier",
+    "new_folder": "Nouveau dossier...",
+    "copied": "Copié dans {{folder}}",
+    "sync_prompt": "Vous avez {{count}} reçus sans fichier Drive.",
+    "file_unavailable": "Fichier non disponible",
+    "connect_prompt": "Connectez Google Drive pour sauvegarder vos fichiers",
+    "reconnect": "Reconnecter Google Drive",
+    "connecting": "Connexion...",
+    "disconnecting": "Déconnexion..."
+  },
   "common": {
     "save": "Enregistrer",
     "cancel": "Annuler",

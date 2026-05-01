@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Search, BookOpen } from 'lucide-react'
+import { Search, BookOpen, FolderOpen } from 'lucide-react'
 import { useReceipts } from '../hooks/useReceipts'
 import { usePatterns } from '../hooks/usePatterns'
 import { useLedgerFilters } from '../context/LedgerFilterContext'
 import ReviewCard from '../components/ReviewCard'
+import FolderPicker from '../components/FolderPicker'
 import { daysAgo } from '../lib/utils'
 
 const THIS_MONTH = () => {
@@ -20,6 +21,7 @@ export default function LedgerPage() {
   const { filters, setSearch, setChip, resetFilters } = useLedgerFilters()
 
   const [expandedId, setExpandedId] = useState(null)
+  const [folderPickerReceipt, setFolderPickerReceipt] = useState(null)
   const [toast, setToast] = useState(null)
 
   const showToast = (msg) => {
@@ -149,19 +151,42 @@ export default function LedgerPage() {
         <div className="space-y-2 pb-6">
           {filtered.map((r) =>
             expandedId === r.id ? (
-              <ReviewCard
-                key={r.id}
-                receipt={r}
-                mode="ledger"
-                onConfirm={handleSave}
-                onClose={() => setExpandedId(null)}
-                onDelete={handleDelete}
-              />
+              <div key={r.id} className="space-y-2">
+                <ReviewCard
+                  receipt={r}
+                  mode="ledger"
+                  onConfirm={handleSave}
+                  onClose={() => setExpandedId(null)}
+                  onDelete={handleDelete}
+                />
+                {r.drive_file_id ? (
+                  <button
+                    onClick={() => setFolderPickerReceipt(r)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-primary border border-primary/30 rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                  >
+                    <FolderOpen size={15} />
+                    {t('drive.copy_to_folder')}
+                  </button>
+                ) : r.status === 'confirmed' && (
+                  <p className="text-center text-xs text-muted py-1">{t('drive.file_unavailable')}</p>
+                )}
+              </div>
             ) : (
               <LedgerRow key={r.id} receipt={r} onClick={() => setExpandedId(r.id)} />
             ),
           )}
         </div>
+      )}
+
+      {/* Folder picker */}
+      {folderPickerReceipt && (
+        <FolderPicker
+          receipt={folderPickerReceipt}
+          onClose={(folderName) => {
+            setFolderPickerReceipt(null)
+            if (folderName) showToast(t('drive.copied', { folder: folderName }))
+          }}
+        />
       )}
 
       {/* Toast */}
