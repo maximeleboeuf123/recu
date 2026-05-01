@@ -97,7 +97,8 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'error_rate' })
   }
 
-  const { pages, userId: bodyUserId } = await parseBody(req)
+  const body = req.body ?? await parseBody(req)
+  const { pages, userId: bodyUserId } = body
   if (!Array.isArray(pages) || pages.length === 0 || bodyUserId !== userId) {
     return res.status(400).json({ error: 'Bad request' })
   }
