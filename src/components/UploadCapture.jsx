@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileText } from 'lucide-react'
+import { compressImage } from '../lib/imageUtils'
 
 function isPdf(file) {
   return file.type === 'application/pdf'
@@ -62,15 +63,17 @@ export default function UploadCapture({ onSubmit, onClose, initialFiles }) {
     setProcessing(true)
     setGroupPrompt(null)
 
-    // Convert each group to pages array, then call onSubmit for each group in parallel
+    // Convert each group to compressed pages array
     const toPages = (files) =>
       Promise.all(
         files.map(
           (file) =>
             new Promise((resolve) => {
               const reader = new FileReader()
-              reader.onload = (e) =>
-                resolve({ fileBase64: e.target.result.split(',')[1], mimeType: file.type })
+              reader.onload = async (e) => {
+                const compressed = await compressImage(e.target.result, file.type)
+                resolve({ fileBase64: compressed.base64, mimeType: compressed.mimeType })
+              }
               reader.readAsDataURL(file)
             }),
         ),

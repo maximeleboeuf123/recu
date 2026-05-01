@@ -31,23 +31,29 @@ export default function HomePage() {
       const token = session?.access_token
       if (!token) return
 
-      const res = await fetch('/api/extract', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ pages, userId: session.user.id }),
-      })
+      try {
+        const res = await fetch('/api/extract', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ pages, userId: session.user.id }),
+        })
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        const key = ERROR_KEYS[body.error] || 'common.error'
-        setErrors((prev) => [...prev, t(key)])
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          const key = ERROR_KEYS[body.error] || 'common.error'
+          setErrors((prev) => [...prev, t(key)])
+          return null
+        }
+
+        return res.json()
+      } catch (e) {
+        console.error('callExtract:', e)
+        setErrors((prev) => [...prev, t('common.error')])
         return null
       }
-
-      return res.json()
     },
     [session, t],
   )

@@ -44,6 +44,17 @@ function generateFilename(extracted) {
   return `${dateStr} - ${vendorSafe} - ${keyword}${invPart}`
 }
 
+function parseBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = ''
+    req.on('data', (chunk) => { data += chunk })
+    req.on('end', () => {
+      try { resolve(JSON.parse(data)) } catch (e) { reject(e) }
+    })
+    req.on('error', reject)
+  })
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
@@ -76,7 +87,7 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'error_rate' })
   }
 
-  const { pages, userId } = req.body
+  const { pages, userId } = await parseBody(req)
   if (!Array.isArray(pages) || pages.length === 0 || userId !== user.id) {
     return res.status(400).json({ error: 'Bad request' })
   }

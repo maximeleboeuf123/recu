@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Check, X } from 'lucide-react'
+import { compressImage } from '../lib/imageUtils'
 
 export default function CameraCapture({ onSubmit, onClose }) {
   const { t } = useTranslation()
@@ -13,18 +14,15 @@ export default function CameraCapture({ onSubmit, onClose }) {
     inputRef.current?.click()
   }, [])
 
-  const handleFile = (e) => {
+  const handleFile = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    e.target.value = '' // reset so same file can re-trigger
+    e.target.value = ''
 
     const reader = new FileReader()
-    reader.onload = (ev) => {
-      const dataUrl = ev.target.result
-      setPages((prev) => [
-        ...prev,
-        { dataUrl, fileBase64: dataUrl.split(',')[1], mimeType: file.type },
-      ])
+    reader.onload = async (ev) => {
+      const compressed = await compressImage(ev.target.result, file.type)
+      setPages((prev) => [...prev, compressed])
     }
     reader.readAsDataURL(file)
   }
