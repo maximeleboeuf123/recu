@@ -9,6 +9,7 @@ const ALLOWED_TYPES = new Set([
   'image/jpeg',
   'image/png',
   'image/heic',
+  'image/heif',
   'image/webp',
   'application/pdf',
 ])
@@ -188,7 +189,11 @@ async function _handler(req, res) {
         'You are extracting data from a receipt or invoice for a Canadian small business expense tracking app. The document may have multiple pages — treat all pages as one single invoice. Extract all fields from across all pages and return ONLY a valid JSON object — no markdown, no explanation. For missing fields use null. For amounts use numbers only. Detect the document language automatically.',
       messages: [{ role: 'user', content: claudeContent }],
     })
-    extracted = JSON.parse(message.content[0].text)
+    let raw = message.content[0].text.trim()
+    if (raw.startsWith('```')) {
+      raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+    }
+    extracted = JSON.parse(raw)
   } catch (e) {
     console.error('Claude extraction error:', e)
     return res.status(500).json({ error: 'extraction_failed' })
