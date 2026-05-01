@@ -40,7 +40,10 @@ export default function CameraCapture({ onSubmit, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-50 flex flex-col safe-top">
+    <div
+      className="fixed inset-0 bg-background z-50 flex flex-col"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
       <input
         ref={inputRef}
         type="file"
@@ -104,8 +107,11 @@ export default function CameraCapture({ onSubmit, onClose }) {
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="px-4 pb-safe-bottom space-y-3 pt-4 border-t border-border">
+          {/* Action buttons — pinned above home indicator */}
+          <div
+            className="px-4 space-y-3 pt-4 border-t border-border"
+            style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+          >
             {pages.length < 10 ? (
               <button
                 onClick={() => inputRef.current?.click()}
