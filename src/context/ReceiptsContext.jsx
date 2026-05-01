@@ -31,14 +31,33 @@ export function ReceiptsProvider({ children }) {
       })
   }, [userId])
 
-  // Re-fetch when the tab becomes visible again (handles mobile WebSocket drops
-  // and catches receipts that finished processing while the app was backgrounded)
+  const refresh = useCallback(() => {
+    if (!userId) return
+    supabase
+      .from('receipts')
+      .select('*')
+      .eq('user_id', userId)
+      .neq('status', 'deleted')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setReceipts(data)
+      })
+  }, [userId])
+
+  // Re-fetch when the tab becomes visible again. Delay 800ms so the network
+  // has time to wake before we fire the request (mobile backgrounding).
   useEffect(() => {
+    let timer
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') refresh()
+      if (document.visibilityState === 'visible') {
+        timer = setTimeout(() => refresh(), 800)
+      }
     }
     document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      clearTimeout(timer)
+    }
   }, [refresh])
 
   useEffect(() => {
@@ -87,6 +106,9 @@ export function ReceiptsProvider({ children }) {
 
     if (!Object.keys(changes).length) return true
 
+    // Optimistic update so the UI reflects immediately (real-time may be down on mobile)
+    setReceipts((prev) => prev.map((r) => r.id === id ? { ...r, ...data } : r))
+
     const { data: existing } = await supabase
       .from('receipts')
       .select('edit_history')
@@ -102,7 +124,10 @@ export function ReceiptsProvider({ children }) {
       .from('receipts')
       .update({ ...data, edit_history: history })
       .eq('id', id)
-    if (error) console.error('updateReceipt:', error.message)
+    if (error) {
+      console.error('updateReceipt:', error.message)
+      setReceipts((prev) => prev.map((r) => r.id === id ? { ...r, ...previousData } : r))
+    }
     return !error
   }, [])
 
@@ -115,19 +140,6 @@ export function ReceiptsProvider({ children }) {
     if (error) console.error('deleteReceipt:', error.message)
     return !error
   }, [])
-
-  const refresh = useCallback(() => {
-    if (!userId) return
-    supabase
-      .from('receipts')
-      .select('*')
-      .eq('user_id', userId)
-      .neq('status', 'deleted')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (data) setReceipts(data)
-      })
-  }, [userId])
 
   const createRecurringEntry = useCallback(
     async (_receiptId, recurringData, receiptData) => {
