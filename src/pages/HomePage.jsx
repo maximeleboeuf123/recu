@@ -23,7 +23,6 @@ export default function HomePage() {
   const [captureMode, setCaptureMode] = useState(null) // 'camera' | 'upload'
   const [dragOver, setDragOver] = useState(false)
   const [dragFiles, setDragFiles] = useState(null)
-  const [progress, setProgress] = useState(null) // { current, total }
   const [errors, setErrors] = useState([])
 
   const callExtract = useCallback(
@@ -60,11 +59,9 @@ export default function HomePage() {
 
   const handleSingleCapture = useCallback(
     async (pages) => {
+      const result = await callExtract(pages)
       setCaptureMode(null)
-      setProgress({ current: 0, total: 1 })
-      await callExtract(pages)
-      setProgress(null)
-      navigate('/review')
+      if (result) navigate('/review')
     },
     [callExtract, navigate],
   )
@@ -121,16 +118,6 @@ export default function HomePage() {
         </button>
       )}
 
-      {/* Progress overlay */}
-      {progress && (
-        <div className="bg-surface border border-border rounded-[8px] p-4 text-center space-y-1">
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin flex-shrink-0" />
-            <p className="text-sm font-medium text-[#1A1A18]">{t('capture.processing')}</p>
-          </div>
-          <p className="text-xs text-muted">{t('capture.processing_hint')}</p>
-        </div>
-      )}
 
       {/* Errors */}
       {errors.map((err, i) => (

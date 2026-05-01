@@ -41,8 +41,8 @@ export default function CameraCapture({ onSubmit, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 bg-background z-50 flex flex-col"
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      className="fixed inset-x-0 top-0 bg-background z-50 flex flex-col"
+      style={{ height: '100dvh', paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       <input
         ref={inputRef}
@@ -71,11 +71,12 @@ export default function CameraCapture({ onSubmit, onClose }) {
       </div>
 
       {processing ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4 text-center">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-[#1A1A18] font-medium text-center">
+          <p className="text-[#1A1A18] font-medium">
             {t('capture.processing_pages', { count: pages.length })}
           </p>
+          <p className="text-sm text-muted">{t('capture.processing_hint')}</p>
         </div>
       ) : (
         <>
@@ -110,7 +111,7 @@ export default function CameraCapture({ onSubmit, onClose }) {
           {/* Action buttons — pinned above home indicator */}
           <div
             className="px-4 space-y-3 pt-4 border-t border-border"
-            style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+            style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 24px)' }}
           >
             {pages.length < 10 ? (
               <button

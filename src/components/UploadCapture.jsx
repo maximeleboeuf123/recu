@@ -89,9 +89,10 @@ export default function UploadCapture({ onSubmit, onClose, initialFiles }) {
   if (processing) {
     return (
       <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3 text-center px-8">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-[#1A1A18] font-medium text-sm">{t('common.loading')}</p>
+          <p className="text-[#1A1A18] font-medium text-sm">{t('capture.processing')}</p>
+          <p className="text-xs text-muted">{t('capture.processing_hint')}</p>
         </div>
       </div>
     )

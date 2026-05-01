@@ -57,11 +57,15 @@ export function ReceiptsProvider({ children }) {
   }, [userId])
 
   const confirmReceipt = useCallback(async (id, data) => {
+    setReceipts((prev) => prev.map((r) => r.id === id ? { ...r, ...data, status: 'confirmed' } : r))
     const { error } = await supabase
       .from('receipts')
       .update({ ...data, status: 'confirmed' })
       .eq('id', id)
-    if (error) console.error('confirmReceipt:', error.message)
+    if (error) {
+      console.error('confirmReceipt:', error.message)
+      setReceipts((prev) => prev.map((r) => r.id === id ? { ...r, status: 'pending' } : r))
+    }
     return !error
   }, [])
 
