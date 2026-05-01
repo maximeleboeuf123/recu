@@ -1,10 +1,19 @@
-import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
+import { RefreshCw } from 'lucide-react'
 import LanguageToggle from './LanguageToggle'
 import { useAuth } from '../hooks/useAuth'
+import { useReceipts } from '../hooks/useReceipts'
 
 export default function MobileHeader() {
-  const { t } = useTranslation()
   const { session } = useAuth()
+  const { refresh } = useReceipts()
+  const [spinning, setSpinning] = useState(false)
+
+  const handleRefresh = () => {
+    refresh()
+    setSpinning(true)
+    setTimeout(() => setSpinning(false), 800)
+  }
 
   return (
     <header
@@ -12,9 +21,18 @@ export default function MobileHeader() {
       style={{ height: 'calc(52px + env(safe-area-inset-top, 0px))', paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       <span className="text-primary font-bold text-lg font-serif tracking-tight">
-        {t('app.name')}
+        Récu
       </span>
-      <LanguageToggle session={session} />
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleRefresh}
+          className="text-muted hover:text-primary transition-colors p-1"
+          aria-label="Rafraîchir"
+        >
+          <RefreshCw size={17} className={spinning ? 'animate-spin' : ''} />
+        </button>
+        <LanguageToggle session={session} />
+      </div>
     </header>
   )
 }

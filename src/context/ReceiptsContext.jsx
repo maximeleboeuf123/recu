@@ -97,6 +97,7 @@ export function ReceiptsProvider({ children }) {
   }, [])
 
   const deleteReceipt = useCallback(async (id) => {
+    setReceipts((prev) => prev.filter((r) => r.id !== id))
     const { error } = await supabase
       .from('receipts')
       .update({ status: 'deleted' })
@@ -104,6 +105,19 @@ export function ReceiptsProvider({ children }) {
     if (error) console.error('deleteReceipt:', error.message)
     return !error
   }, [])
+
+  const refresh = useCallback(() => {
+    if (!userId) return
+    supabase
+      .from('receipts')
+      .select('*')
+      .eq('user_id', userId)
+      .neq('status', 'deleted')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setReceipts(data)
+      })
+  }, [userId])
 
   const createRecurringEntry = useCallback(
     async (_receiptId, recurringData, receiptData) => {
@@ -139,6 +153,7 @@ export function ReceiptsProvider({ children }) {
         updateReceipt,
         deleteReceipt,
         createRecurringEntry,
+        refresh,
       }}
     >
       {children}
