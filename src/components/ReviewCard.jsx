@@ -3,12 +3,14 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Pencil, AlertTriangle, Info, Plus, ChevronDown, FileText, X } from 'lucide-react'
 import RecurringFields from './RecurringFields'
+import { useDimensions } from '../context/DimensionsContext'
 
 const CURRENCIES = ['CAD', 'USD', 'EUR', 'GBP', 'CHF', 'MXN']
 
 // mode: 'review' (confirm/skip) | 'ledger' (save/cancel)
 export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip, onDelete, onClose }) {
   const { t } = useTranslation()
+  const { accounts, categories } = useDimensions()
   const scores = receipt.confidence_scores || {}
   const conf = receipt.extracted_raw?.confidence || {}
 
@@ -152,8 +154,8 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
         <EditRow label={t('receipt.description')} value={fields.description} onSave={(v) => set('description', v)} />
 
         {/* Dimensions — Account & Category */}
-        <DimensionRow label={t('receipt.account')} value={fields.label_property} onChange={(v) => handleDimensionChange('label_property', v)} />
-        <DimensionRow label={t('receipt.category')} value={fields.label_category} onChange={(v) => handleDimensionChange('label_category', v)} />
+        <DimensionRow label={t('receipt.account')} value={fields.label_property} onChange={(v) => handleDimensionChange('label_property', v)} options={accounts} />
+        <DimensionRow label={t('receipt.category')} value={fields.label_category} onChange={(v) => handleDimensionChange('label_category', v)} options={categories} />
 
         <EditRow
           label={t('receipt.total')}
@@ -405,19 +407,62 @@ function EditRow({ label, value, onSave, type = 'text', badge, lowConfidence }) 
   )
 }
 
-function DimensionRow({ label, value, onChange }) {
+function DimensionRow({ label, value, onChange, options = [] }) {
+  const [open, setOpen] = useState(false)
+  const [localVal, setLocalVal] = useState(value)
+
+  // Keep local in sync when parent resets (e.g. new card)
+  if (!open && localVal !== value) setLocalVal(value)
+
+  const filtered = options.filter(
+    (o) => !localVal || o.toLowerCase().includes(localVal.toLowerCase())
+  )
+  const showDropdown = open && filtered.length > 0
+
+  const commit = (val) => {
+    onChange(val)
+    setLocalVal(val)
+    setOpen(false)
+  }
+
   return (
-    <div className="px-4 py-2.5 flex items-center gap-2">
-      <span className="text-sm text-muted w-28 flex-shrink-0">{label}</span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="—"
-        className="flex-1 text-sm text-[#1A1A18] bg-transparent border-none focus:outline-none min-w-0"
-      />
-      <button className="w-6 h-6 flex items-center justify-center border border-border rounded-full text-muted hover:text-primary flex-shrink-0">
-        <Plus size={12} />
-      </button>
+    <div>
+      <div className="px-4 py-2.5 flex items-center gap-2">
+        <span className="text-sm text-muted w-28 flex-shrink-0">{label}</span>
+        <input
+          value={localVal}
+          onChange={(e) => { setLocalVal(e.target.value); onChange(e.target.value) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="—"
+          className="flex-1 text-sm text-[#1A1A18] bg-transparent border-none focus:outline-none min-w-0"
+        />
+        {localVal ? (
+          <button
+            onMouseDown={() => commit('')}
+            className="flex-shrink-0 text-muted hover:text-error transition-colors"
+          >
+            <X size={12} />
+          </button>
+        ) : (
+          <ChevronDown size={12} className="text-border flex-shrink-0" />
+        )}
+      </div>
+      {showDropdown && (
+        <div className="border-t border-border/60 bg-background/60">
+          {filtered.map((opt) => (
+            <button
+              key={opt}
+              onMouseDown={() => commit(opt)}
+              className={`w-full text-left px-4 py-2 text-sm border-b border-border/40 last:border-0 transition-colors ${
+                opt === localVal ? 'text-primary font-medium bg-primary/5' : 'text-[#1A1A18] hover:bg-surface'
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
