@@ -19,7 +19,8 @@
   "capture": {
     "photo": "Photographier un reçu",
     "upload": "Téléverser des fichiers",
-    "processing": "Traitement en cours... {{current}} / {{total}}",
+    "processing": "Traitement en cours...",
+    "processing_hint": "Le reçu sera disponible pour révision dans ~1 min",
     "processing_pages": "Analyse en cours... ({{count}} pages)",
     "add_page": "Ajouter une page",
     "done_pages": "Terminer",

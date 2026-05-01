@@ -123,16 +123,12 @@ export default function HomePage() {
 
       {/* Progress overlay */}
       {progress && (
-        <div className="bg-surface border border-border rounded-[8px] p-4 text-center">
-          <div className="w-full bg-border rounded-full h-1.5 mb-2">
-            <div
-              className="bg-primary h-1.5 rounded-full transition-all duration-300"
-              style={{ width: progress.total > 0 ? `${(progress.current / progress.total) * 100}%` : '0%' }}
-            />
+        <div className="bg-surface border border-border rounded-[8px] p-4 text-center space-y-1">
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin flex-shrink-0" />
+            <p className="text-sm font-medium text-[#1A1A18]">{t('capture.processing')}</p>
           </div>
-          <p className="text-sm text-muted">
-            {t('capture.processing', { current: progress.current, total: progress.total })}
-          </p>
+          <p className="text-xs text-muted">{t('capture.processing_hint')}</p>
         </div>
       )}
 

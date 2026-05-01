@@ -19,7 +19,8 @@
   "capture": {
     "photo": "Photograph a receipt",
     "upload": "Upload files",
-    "processing": "Processing... {{current}} / {{total}}",
+    "processing": "Processing...",
+    "processing_hint": "Your receipt will be ready for review in ~1 min",
     "processing_pages": "Analysing... ({{count}} pages)",
     "add_page": "Add another page",
     "done_pages": "Done",
