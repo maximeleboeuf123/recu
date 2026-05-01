@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pencil, AlertTriangle, Info, Plus, ChevronDown } from 'lucide-react'
+import { Pencil, AlertTriangle, Info, Plus, ChevronDown, FileText, X } from 'lucide-react'
 import RecurringFields from './RecurringFields'
 
 const CURRENCIES = ['CAD', 'USD', 'EUR', 'GBP', 'CHF', 'MXN']
@@ -32,6 +32,7 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   const [patternPrompt, setPatternPrompt] = useState(null)
   const [dirty, setDirty] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [viewingDoc, setViewingDoc] = useState(false)
 
   const set = (key, val) => {
     setFields((prev) => ({ ...prev, [key]: val }))
@@ -68,12 +69,44 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   const qstCalculated = scores.qst_source === 'calculated'
 
   return (
+    <>
+    {/* Document viewer overlay */}
+    {viewingDoc && receipt.drive_file_id && (
+      <div className="fixed inset-0 bg-black z-[400] flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="flex items-center justify-between px-4 py-3 bg-surface border-b border-border flex-shrink-0">
+          <span className="text-sm font-medium text-[#1A1A18] truncate pr-4">
+            {receipt.filename || fields.vendor || '—'}
+          </span>
+          <button
+            onClick={() => setViewingDoc(false)}
+            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-background transition-colors"
+          >
+            <X size={20} className="text-muted" />
+          </button>
+        </div>
+        <iframe
+          src={`https://drive.google.com/file/d/${receipt.drive_file_id}/preview`}
+          className="flex-1 w-full border-0"
+          allow="autoplay"
+          title="Receipt document"
+        />
+      </div>
+    )}
+
     <div className="bg-surface border border-border rounded-[8px] overflow-hidden">
       {/* Header */}
       <div className="flex items-start gap-3 p-4 border-b border-border bg-background/40">
-        <div className="w-12 h-16 flex-shrink-0 bg-border/40 rounded-[4px] flex items-center justify-center text-xs text-muted">
-          {receipt.page_count || 1}p
-        </div>
+        <button
+          onClick={() => receipt.drive_file_id && setViewingDoc(true)}
+          className={`w-12 h-16 flex-shrink-0 rounded-[4px] flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
+            receipt.drive_file_id
+              ? 'bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer'
+              : 'bg-border/40 text-muted cursor-default'
+          }`}
+        >
+          <FileText size={18} strokeWidth={1.5} />
+          <span>{receipt.page_count || 1}p</span>
+        </button>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-[#1A1A18] truncate">{fields.vendor || '—'}</p>
           <p className="text-sm text-muted mt-0.5">
@@ -310,6 +343,7 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
         )}
       </div>
     </div>
+    </>
   )
 }
 
