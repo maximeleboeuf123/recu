@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
-  defaultHeaders: { 'anthropic-beta': 'zero-data-retention-2025-01-01' },
 })
 
 const ALLOWED_TYPES = new Set([
