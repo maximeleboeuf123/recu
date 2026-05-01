@@ -79,6 +79,8 @@
     "export": "Export",
     "pending_badge": "Pending",
     "all": "All",
+    "pending": "Pending",
+    "confirmed": "Confirmed",
     "this_month": "This month",
     "vendor": "Vendor",
     "category": "Category",

@@ -79,6 +79,8 @@
     "export": "Exporter",
     "pending_badge": "En attente",
     "all": "Tous",
+    "pending": "En attente",
+    "confirmed": "Confirmés",
     "this_month": "Ce mois",
     "vendor": "Fournisseur",
     "category": "Catégorie",
