@@ -369,8 +369,7 @@ function LedgerRow({ receipt, onClick }) {
           )}
         </div>
         <p className="text-xs text-muted mt-0.5">
-          {receipt.invoice_date || '—'}
-          {receipt.labels?.category ? ` · ${receipt.labels.category}` : ''}
+          {[receipt.invoice_date || '—', receipt.labels?.property, receipt.labels?.category].filter(Boolean).join(' · ')}
         </p>
       </div>
       <p className="text-sm font-semibold text-[#1A1A18] flex-shrink-0 ml-3">

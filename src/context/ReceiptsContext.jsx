@@ -31,6 +31,16 @@ export function ReceiptsProvider({ children }) {
       })
   }, [userId])
 
+  // Re-fetch when the tab becomes visible again (handles mobile WebSocket drops
+  // and catches receipts that finished processing while the app was backgrounded)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [refresh])
+
   useEffect(() => {
     if (!userId) return
 
