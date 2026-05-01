@@ -29,6 +29,7 @@ export default function VendorGroup({
   onConfirmAll,
   onConfirmOne,
   onSkipOne,
+  onDelete,
   skippedIds,
 }) {
   const { t } = useTranslation()
@@ -48,6 +49,7 @@ export default function VendorGroup({
             mode="review"
             onConfirm={(id, data, recurring, pattern) => onConfirmOne?.(id, data, recurring, pattern)}
             onSkip={(id) => onSkipOne?.(id)}
+            onDelete={(id) => onDelete?.(id)}
           />
         </div>
       </div>
@@ -150,6 +152,7 @@ export default function VendorGroup({
                       setExpandedId(null)
                       onSkipOne?.(id)
                     }}
+                    onDelete={(id) => onDelete?.(id)}
                   />
                 </div>
               ) : (

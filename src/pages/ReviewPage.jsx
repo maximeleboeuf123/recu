@@ -37,7 +37,7 @@ function groupReceipts(receipts) {
 export default function ReviewPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { pendingReceipts, loading, confirmReceipt, createRecurringEntry } = useReceipts()
+  const { pendingReceipts, loading, confirmReceipt, deleteReceipt, createRecurringEntry } = useReceipts()
   const { savePattern, applyPatternToPending } = usePatterns()
 
   const [skippedIds, setSkippedIds] = useState(new Set())
@@ -91,8 +91,13 @@ export default function ReviewPage() {
 
   const handleSkip = (id) => {
     setSkippedIds((prev) => new Set([...prev, id]))
-    // Re-add to bottom after a moment so queue doesn't lose the item
     setTimeout(() => setSkippedIds((prev) => { const next = new Set(prev); next.delete(id); return next }), 5000)
+  }
+
+  const handleDeleteOne = async (id) => {
+    const ok = await deleteReceipt(id)
+    if (!ok) showToast(t('common.error'))
+    else showToast(t('review.deleted'))
   }
 
   if (loading) {
@@ -144,6 +149,7 @@ export default function ReviewPage() {
             onConfirmAll={handleConfirmAll}
             onConfirmOne={handleConfirmOne}
             onSkipOne={handleSkip}
+            onDelete={handleDeleteOne}
           />
         ))
       )}

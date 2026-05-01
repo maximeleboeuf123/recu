@@ -15,7 +15,7 @@ const THIS_MONTH = () => {
 
 export default function LedgerPage() {
   const { t } = useTranslation()
-  const { receipts, loading, updateReceipt } = useReceipts()
+  const { receipts, loading, updateReceipt, deleteReceipt } = useReceipts()
   const { savePattern, applyPatternToPending } = usePatterns()
   const { filters, setSearch, setChip, resetFilters } = useLedgerFilters()
 
@@ -56,6 +56,13 @@ export default function LedgerPage() {
 
     return list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   }, [receipts, filters])
+
+  const handleDelete = async (id) => {
+    const ok = await deleteReceipt(id)
+    if (!ok) return showToast(t('common.error'))
+    setExpandedId(null)
+    showToast(t('review.deleted'))
+  }
 
   const handleSave = async (id, data, _recurring, patternInfo) => {
     const original = receipts.find((r) => r.id === id)
@@ -148,6 +155,7 @@ export default function LedgerPage() {
                 mode="ledger"
                 onConfirm={handleSave}
                 onClose={() => setExpandedId(null)}
+                onDelete={handleDelete}
               />
             ) : (
               <LedgerRow key={r.id} receipt={r} onClick={() => setExpandedId(r.id)} />

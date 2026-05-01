@@ -6,7 +6,7 @@ import RecurringFields from './RecurringFields'
 const CURRENCIES = ['CAD', 'USD', 'EUR', 'GBP', 'CHF', 'MXN']
 
 // mode: 'review' (confirm/skip) | 'ledger' (save/cancel)
-export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip, onClose }) {
+export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip, onDelete, onClose }) {
   const { t } = useTranslation()
   const scores = receipt.confidence_scores || {}
   const conf = receipt.extracted_raw?.confidence || {}
@@ -31,6 +31,7 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   const [recurring, setRecurring] = useState(null)
   const [patternPrompt, setPatternPrompt] = useState(null)
   const [dirty, setDirty] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const set = (key, val) => {
     setFields((prev) => ({ ...prev, [key]: val }))
@@ -181,6 +182,9 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
 
       {/* Warnings */}
       <div className="px-4 py-2 space-y-1.5">
+        {(!fields.total && !fields.vendor) && (
+          <Warning text={t('review.extraction_warning')} />
+        )}
         {gstCalculated && (
           <Warning text="TPS calculée automatiquement (sous-total × 5%)" />
         )}
@@ -219,37 +223,89 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-2 px-4 py-3 border-t border-border">
+      <div className="px-4 py-3 border-t border-border space-y-2">
         {mode === 'review' ? (
           <>
             <button
-              onClick={() => onSkip?.(receipt.id)}
-              className="flex-1 py-2.5 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform"
-            >
-              {t('review.skip') || 'Ignorer'}
-            </button>
-            <button
               onClick={handleConfirm}
-              className="flex-1 py-2.5 text-sm bg-primary text-white rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+              className="w-full py-2.5 text-sm bg-primary text-white rounded-[8px] font-medium active:scale-[0.98] transition-transform"
             >
-              {t('review.confirm') || 'Confirmer'}
+              {t('review.confirm')}
             </button>
+            {confirmingDelete ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmingDelete(false)}
+                  className="flex-1 py-2.5 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={() => onDelete?.(receipt.id)}
+                  className="flex-1 py-2.5 text-sm text-error border border-error/40 bg-error/5 rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                >
+                  {t('review.delete_confirm')}
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onSkip?.(receipt.id)}
+                  className="flex-1 py-2.5 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                >
+                  {t('review.later')}
+                </button>
+                <button
+                  onClick={() => setConfirmingDelete(true)}
+                  className="flex-1 py-2.5 text-sm text-error border border-error/30 rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                >
+                  {t('review.delete')}
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <>
-            <button
-              onClick={() => onClose?.()}
-              className="flex-1 py-2.5 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!dirty}
-              className="flex-1 py-2.5 text-sm bg-primary text-white rounded-[8px] font-medium active:scale-[0.98] transition-transform disabled:opacity-40"
-            >
-              {t('common.save')}
-            </button>
+            {confirmingDelete ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmingDelete(false)}
+                  className="flex-1 py-2.5 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={() => onDelete?.(receipt.id)}
+                  className="flex-1 py-2.5 text-sm text-error border border-error/40 bg-error/5 rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                >
+                  {t('review.delete_confirm')}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onClose?.()}
+                    className="flex-1 py-2.5 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={!dirty}
+                    className="flex-1 py-2.5 text-sm bg-primary text-white rounded-[8px] font-medium active:scale-[0.98] transition-transform disabled:opacity-40"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+                <button
+                  onClick={() => setConfirmingDelete(true)}
+                  className="w-full py-2 text-sm text-error font-medium active:scale-[0.98] transition-transform"
+                >
+                  {t('review.delete')}
+                </button>
+              </>
+            )}
           </>
         )}
       </div>
