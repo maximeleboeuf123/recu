@@ -294,6 +294,8 @@ function AccountConfigSheet({ lang, initialName, initialCategories, onBack, onCr
 
 function AccountBlock({ account, lang, onRemoveAccount, onRenameAccount, onAddCategory, onRemoveCategory, onRenameCategory }) {
   const [open, setOpen] = useState(true)
+  const [confirmAccount, setConfirmAccount] = useState(false)
+  const [confirmCatId, setConfirmCatId] = useState(null)
 
   return (
     <div className="bg-surface rounded-[8px] border border-border overflow-hidden">
@@ -310,12 +312,36 @@ function AccountBlock({ account, lang, onRemoveAccount, onRenameAccount, onAddCa
         />
         <span className="text-xs text-muted flex-shrink-0 mr-1">{account.categories.length}</span>
         <button
-          onClick={onRemoveAccount}
+          onClick={() => setConfirmAccount(true)}
           className="w-6 h-6 flex items-center justify-center rounded-full text-muted hover:text-error hover:bg-error/10 transition-colors flex-shrink-0"
         >
           <X size={13} />
         </button>
       </div>
+
+      {confirmAccount && (
+        <div className="border-t border-error/30 bg-error/5 px-4 py-3 space-y-2">
+          <p className="text-xs font-medium text-error">
+            {lang === 'en'
+              ? `Delete "${account.name}"? The account and all its categories will be cleared from every receipt they're assigned to.`
+              : `Supprimer « ${account.name} » ? Le compte et toutes ses catégories seront effacés de chaque reçu auquel ils sont associés.`}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmAccount(false)}
+              className="flex-1 py-1.5 text-xs text-muted border border-border rounded-[6px] font-medium"
+            >
+              {lang === 'en' ? 'Cancel' : 'Annuler'}
+            </button>
+            <button
+              onClick={() => { setConfirmAccount(false); onRemoveAccount() }}
+              className="flex-1 py-1.5 text-xs text-white bg-error rounded-[6px] font-medium"
+            >
+              {lang === 'en' ? 'Delete account' : 'Supprimer le compte'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {open && (
         <div className="divide-y divide-border/60">
@@ -325,18 +351,43 @@ function AccountBlock({ account, lang, onRemoveAccount, onRenameAccount, onAddCa
             </p>
           )}
           {account.categories.map((cat) => (
-            <div key={cat.id} className="flex items-center gap-2 pl-10 pr-4 py-2.5">
-              <EditableName
-                value={cat.name}
-                onSave={(name) => onRenameCategory(cat.id, name)}
-                className="flex-1 min-w-0 text-sm text-[#1A1A18]"
-              />
-              <button
-                onClick={() => onRemoveCategory(cat.id)}
-                className="w-5 h-5 flex items-center justify-center rounded-full text-muted hover:text-error hover:bg-error/10 transition-colors flex-shrink-0"
-              >
-                <X size={11} />
-              </button>
+            <div key={cat.id}>
+              <div className="flex items-center gap-2 pl-10 pr-4 py-2.5">
+                <EditableName
+                  value={cat.name}
+                  onSave={(name) => onRenameCategory(cat.id, name)}
+                  className="flex-1 min-w-0 text-sm text-[#1A1A18]"
+                />
+                <button
+                  onClick={() => setConfirmCatId(confirmCatId === cat.id ? null : cat.id)}
+                  className="w-5 h-5 flex items-center justify-center rounded-full text-muted hover:text-error hover:bg-error/10 transition-colors flex-shrink-0"
+                >
+                  <X size={11} />
+                </button>
+              </div>
+              {confirmCatId === cat.id && (
+                <div className="bg-error/5 border-t border-error/30 pl-10 pr-4 py-3 space-y-2">
+                  <p className="text-xs font-medium text-error">
+                    {lang === 'en'
+                      ? `Delete "${cat.name}"? This category will be cleared from every receipt it's assigned to.`
+                      : `Supprimer « ${cat.name} » ? Cette catégorie sera effacée de chaque reçu auquel elle est associée.`}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setConfirmCatId(null)}
+                      className="flex-1 py-1.5 text-xs text-muted border border-border rounded-[6px] font-medium"
+                    >
+                      {lang === 'en' ? 'Cancel' : 'Annuler'}
+                    </button>
+                    <button
+                      onClick={() => { setConfirmCatId(null); onRemoveCategory(cat.id) }}
+                      className="flex-1 py-1.5 text-xs text-white bg-error rounded-[6px] font-medium"
+                    >
+                      {lang === 'en' ? 'Delete category' : 'Supprimer la catégorie'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           <div className="pl-10 pr-4">

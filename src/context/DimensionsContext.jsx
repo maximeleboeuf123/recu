@@ -63,19 +63,34 @@ export function DimensionsProvider({ children }) {
     return true
   }, [userId])
 
-  // --- removeAccount: optimistic, restore on failure ---
+  // --- removeAccount: optimistic, restore on failure, cascade-clear receipts ---
   const removeAccount = useCallback(async (id) => {
     const snapshot = accountsWithCategories.find((a) => a.id === id)
+    if (!snapshot) return false
+    const accountName = snapshot.name
+    const categoryNames = new Set(snapshot.categories.map((c) => c.name))
+
     setAccountsWithCategories((prev) => prev.filter((a) => a.id !== id))
 
     const { error } = await supabase.from('dimensions').delete().eq('id', id)
     if (error) {
       console.error('removeAccount:', error.message)
-      if (snapshot) setAccountsWithCategories((prev) => [...prev, snapshot])
+      setAccountsWithCategories((prev) => [...prev, snapshot])
       return false
     }
+
+    // Cascade: clear account + matching category from receipts
+    const { data: affected } = await supabase
+      .from('receipts').select('id, labels').eq('user_id', userId).filter('labels->>property', 'eq', accountName)
+    if (affected?.length) {
+      await Promise.all(affected.map((r) =>
+        supabase.from('receipts').update({
+          labels: { ...r.labels, property: null, category: categoryNames.has(r.labels?.category) ? null : r.labels?.category },
+        }).eq('id', r.id)
+      ))
+    }
     return true
-  }, [accountsWithCategories])
+  }, [accountsWithCategories, userId])
 
   // --- addCategory: optimistic under the right account ---
   const addCategory = useCallback(async (accountId, name) => {
@@ -113,7 +128,7 @@ export function DimensionsProvider({ children }) {
     return true
   }, [userId])
 
-  // --- removeCategory: optimistic ---
+  // --- removeCategory: optimistic, cascade-clear receipts ---
   const removeCategory = useCallback(async (categoryId) => {
     let ownerAccountId, removed
     setAccountsWithCategories((prev) =>
@@ -136,8 +151,19 @@ export function DimensionsProvider({ children }) {
       }
       return false
     }
+
+    // Cascade: clear category from receipts
+    if (removed) {
+      const { data: affected } = await supabase
+        .from('receipts').select('id, labels').eq('user_id', userId).filter('labels->>category', 'eq', removed.name)
+      if (affected?.length) {
+        await Promise.all(affected.map((r) =>
+          supabase.from('receipts').update({ labels: { ...r.labels, category: null } }).eq('id', r.id)
+        ))
+      }
+    }
     return true
-  }, [])
+  }, [userId])
 
   // --- renameAccount: update dimension + cascade to receipts labels.property ---
   const renameAccount = useCallback(async (id, newName) => {
