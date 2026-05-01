@@ -13,6 +13,7 @@ import SettingsPage from './pages/SettingsPage'
 import ReceiptPage from './pages/ReceiptPage'
 import DimensionsPage from './pages/DimensionsPage'
 import ExportPage from './pages/ExportPage'
+import GuidePage from './pages/GuidePage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 
@@ -46,6 +47,7 @@ export default function App() {
               <Route path="/receipt/:id" element={<ReceiptPage />} />
               <Route path="/dimensions" element={<DimensionsPage />} />
               <Route path="/export" element={<ExportPage />} />
+              <Route path="/guide" element={<GuidePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           )}

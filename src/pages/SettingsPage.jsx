@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Layers, RefreshCw, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight } from 'lucide-react'
+import { Layers, RefreshCw, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useDrive } from '../hooks/useDrive'
 import LanguageToggle from '../components/LanguageToggle'
 
 export default function SettingsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { session, signOut } = useAuth()
   const { driveState, loading: driveLoading, refresh: refreshDrive } = useDrive()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -56,6 +56,13 @@ export default function SettingsPage() {
 
       {/* Settings rows */}
       <div className="bg-surface rounded-[8px] border border-border divide-y divide-border">
+        <Link to="/guide" className="flex items-center px-4 py-3.5 gap-3 hover:bg-background transition-colors">
+          <BookOpen size={17} className="text-muted flex-shrink-0" />
+          <span className="flex-1 text-sm font-medium text-[#1A1A18]">
+            {i18n.language === 'en' ? 'How it works' : 'Comment ça marche'}
+          </span>
+          <ChevronRight size={15} className="text-muted" />
+        </Link>
         <Link to="/dimensions" className="flex items-center px-4 py-3.5 gap-3 hover:bg-background transition-colors">
           <Layers size={17} className="text-muted flex-shrink-0" />
           <span className="flex-1 text-sm font-medium text-[#1A1A18]">{t('settings.dimensions')}</span>

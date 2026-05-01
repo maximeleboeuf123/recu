@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Pencil, AlertTriangle, Info, Plus, ChevronDown, FileText, X, Settings } from 'lucide-react'
+import { Pencil, AlertTriangle, Info, Plus, ChevronDown, FileText, X, Settings, Check } from 'lucide-react'
 import RecurringFields from './RecurringFields'
 import { useDimensions } from '../context/DimensionsContext'
 
@@ -10,7 +10,8 @@ const CURRENCIES = ['CAD', 'USD', 'EUR', 'GBP', 'CHF', 'MXN']
 
 // mode: 'review' (confirm/skip) | 'ledger' (save/cancel)
 export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip, onDelete, onClose }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const lang = i18n.language === 'en' ? 'en' : 'fr'
   const { accountsWithCategories } = useDimensions()
   const scores = receipt.confidence_scores || {}
   const conf = receipt.extracted_raw?.confidence || {}
@@ -37,10 +38,39 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   const [dirty, setDirty] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [viewingDoc, setViewingDoc] = useState(false)
+  const [applyTaxes, setApplyTaxes] = useState(false)
+
+  // Taxes are considered "found" if any tax field was extracted with a non-zero value
+  const hasTaxesOnReceipt = [receipt.gst, receipt.qst, receipt.hst].some(
+    (v) => v != null && v !== '' && parseFloat(v) !== 0,
+  )
 
   const set = (key, val) => {
     setFields((prev) => ({ ...prev, [key]: val }))
     setDirty(true)
+  }
+
+  const handleToggleTaxes = (checked) => {
+    setApplyTaxes(checked)
+    setDirty(true)
+    if (checked) {
+      const sub = parseFloat(fields.subtotal)
+      let gst = '', qst = ''
+      if (!isNaN(sub) && sub > 0) {
+        gst = parseFloat((sub * 0.05).toFixed(2))
+        qst = parseFloat((sub * 0.09975).toFixed(2))
+      } else {
+        const tot = parseFloat(fields.total)
+        if (!isNaN(tot) && tot > 0) {
+          const impliedSub = tot / 1.14975
+          gst = parseFloat((impliedSub * 0.05).toFixed(2))
+          qst = parseFloat((impliedSub * 0.09975).toFixed(2))
+        }
+      }
+      setFields((prev) => ({ ...prev, gst, qst }))
+    } else {
+      setFields((prev) => ({ ...prev, gst: '', qst: '' }))
+    }
   }
 
   const handleDimensionChange = (field, val) => {
@@ -179,6 +209,12 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
           lowConfidence={conf.total === 'low'}
         />
         <EditRow label={t('receipt.subtotal')} value={fields.subtotal} onSave={(v) => set('subtotal', v)} type="number" />
+
+        {/* Tax checkbox — only shown when no taxes were extracted */}
+        {!hasTaxesOnReceipt && (
+          <TaxToggleRow checked={applyTaxes} onChange={handleToggleTaxes} lang={lang} />
+        )}
+
         <EditRow
           label="TPS / GST"
           value={fields.gst}
@@ -226,7 +262,12 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
           <Warning text="TPS calculée automatiquement (sous-total × 5%)" />
         )}
         {qstCalculated && (
-          <Warning text={`TVQ calculée automatiquement (sous-total × 9.975%)`} />
+          <Warning text="TVQ calculée automatiquement (sous-total × 9.975%)" />
+        )}
+        {applyTaxes && !hasTaxesOnReceipt && (
+          <Warning text={lang === 'en'
+            ? 'Taxes calculated — verify before filing'
+            : 'Taxes calculées — vérifiez avant de déclarer'} />
         )}
         {conf.invoice_date === 'low' && (
           <Warning text={t('review.low_confidence') + ' — date'} />
@@ -504,5 +545,29 @@ function InfoBadge({ text }) {
       <Info size={12} className="text-primary flex-shrink-0 mt-0.5" />
       <p className="text-xs text-primary">{text}</p>
     </div>
+  )
+}
+
+function TaxToggleRow({ checked, onChange, lang }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="w-full flex items-center justify-between px-4 py-2.5 gap-3 hover:bg-background/60 transition-colors text-left"
+    >
+      <div className="min-w-0">
+        <p className="text-sm text-muted">
+          {lang === 'en' ? 'Calculate taxes' : 'Calculer les taxes'}
+        </p>
+        <p className="text-[11px] text-muted/60 mt-0.5">
+          TPS 5% + TVQ 9.975%
+        </p>
+      </div>
+      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+        checked ? 'bg-primary border-primary' : 'border-border'
+      }`}>
+        {checked && <Check size={11} strokeWidth={3} className="text-white" />}
+      </div>
+    </button>
   )
 }
