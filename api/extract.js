@@ -63,17 +63,23 @@ export default async function handler(req, res) {
   }
   const token = authHeader.slice(7)
 
+  // Plain client for auth check — global header override breaks apikey on /auth/v1/user
+  const supabaseAuth = createClient(
+    process.env.VITE_SUPABASE_URL,
+    process.env.VITE_SUPABASE_ANON_KEY,
+  )
+  const {
+    data: { user },
+    error: authError,
+  } = await supabaseAuth.auth.getUser(token)
+  if (authError || !user) return res.status(401).json({ error: 'Unauthorized' })
+
+  // Authenticated client for RLS-protected DB operations
   const supabase = createClient(
     process.env.VITE_SUPABASE_URL,
     process.env.VITE_SUPABASE_ANON_KEY,
     { global: { headers: { Authorization: `Bearer ${token}` } } },
   )
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser(token)
-  if (authError || !user) return res.status(401).json({ error: 'Unauthorized' })
 
   // Rate limit: count receipts created in the last hour
   const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString()
