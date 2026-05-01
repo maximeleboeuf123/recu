@@ -63,18 +63,14 @@ export default function LedgerPage() {
     if (!ok) return showToast(t('common.error'))
 
     // Pattern update if dimensions changed
-    if (data.vendor && (data.dimension_category || data.dimension_property)) {
+    if (data.vendor && data.labels) {
       const dimChanged =
-        original?.dimension_category !== data.dimension_category ||
-        original?.dimension_property !== data.dimension_property
+        original?.labels?.category !== data.labels.category ||
+        original?.labels?.property !== data.labels.property
 
       if (dimChanged) {
-        const labels = {
-          dimension_category: data.dimension_category || null,
-          dimension_property: data.dimension_property || null,
-        }
-        await savePattern(data.vendor, labels)
-        await applyPatternToPending(data.vendor, labels)
+        await savePattern(data.vendor, data.labels)
+        await applyPatternToPending(data.vendor, data.labels)
       }
     }
 
@@ -189,7 +185,7 @@ function LedgerRow({ receipt, onClick }) {
         </div>
         <p className="text-xs text-muted mt-0.5">
           {receipt.invoice_date || '—'}
-          {receipt.dimension_category ? ` · ${receipt.dimension_category}` : ''}
+          {receipt.labels?.category ? ` · ${receipt.labels.category}` : ''}
         </p>
       </div>
       <p className="text-sm font-semibold text-[#1A1A18] flex-shrink-0 ml-3">

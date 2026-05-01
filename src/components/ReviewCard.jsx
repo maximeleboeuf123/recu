@@ -24,12 +24,12 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
     currency: receipt.currency || 'CAD',
     vendor_gst_number: receipt.vendor_gst_number || '',
     vendor_qst_number: receipt.vendor_qst_number || '',
-    dimension_category: receipt.dimension_category || '',
-    dimension_property: receipt.dimension_property || '',
+    label_category: receipt.labels?.category || '',
+    label_property: receipt.labels?.property || '',
   })
 
   const [recurring, setRecurring] = useState(null)
-  const [patternPrompt, setPatternPrompt] = useState(null) // { field, vendor, value }
+  const [patternPrompt, setPatternPrompt] = useState(null)
   const [dirty, setDirty] = useState(false)
 
   const set = (key, val) => {
@@ -44,22 +44,23 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
     }
   }
 
-  const handleConfirm = () => {
-    const data = { ...fields }
-    // Coerce numeric fields
+  const buildData = () => {
+    const { label_category, label_property, ...rest } = fields
+    const data = { ...rest }
     for (const k of ['subtotal', 'gst', 'qst', 'hst', 'total']) {
       data[k] = data[k] !== '' ? parseFloat(data[k]) : null
     }
-    onConfirm?.(receipt.id, data, recurring, patternPrompt)
+    data.labels = { category: label_category || null, property: label_property || null }
+    return data
+  }
+
+  const handleConfirm = () => {
+    onConfirm?.(receipt.id, buildData(), recurring, patternPrompt)
   }
 
   const handleSave = () => {
     if (!dirty) return onClose?.()
-    const data = { ...fields }
-    for (const k of ['subtotal', 'gst', 'qst', 'hst', 'total']) {
-      data[k] = data[k] !== '' ? parseFloat(data[k]) : null
-    }
-    onConfirm?.(receipt.id, data, null, patternPrompt)
+    onConfirm?.(receipt.id, buildData(), null, patternPrompt)
   }
 
   const gstCalculated = scores.gst_source === 'calculated'
@@ -149,30 +150,28 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
 
         {/* Dimensions */}
         <div className="px-4 py-2.5 flex items-center gap-2">
-          <span className="text-sm text-muted w-28 flex-shrink-0">{t('settings.dimensions') || 'Catégorie'}</span>
+          <span className="text-sm text-muted w-28 flex-shrink-0">Catégorie</span>
           <input
-            value={fields.dimension_category}
-            onChange={(e) => handleDimensionChange('dimension_category', e.target.value)}
+            value={fields.label_category}
+            onChange={(e) => handleDimensionChange('label_category', e.target.value)}
             placeholder="—"
             className="flex-1 text-sm text-[#1A1A18] bg-transparent border-none focus:outline-none min-w-0"
           />
           <button
-            onClick={() => {/* Session 5: open dimension sheet */}}
             className="w-6 h-6 flex items-center justify-center border border-border rounded-full text-muted hover:text-primary flex-shrink-0"
           >
             <Plus size={12} />
           </button>
         </div>
         <div className="px-4 py-2.5 flex items-center gap-2">
-          <span className="text-sm text-muted w-28 flex-shrink-0">{t('settings.dimensions') === 'Mes dimensions' ? 'Propriété' : 'Property'}</span>
+          <span className="text-sm text-muted w-28 flex-shrink-0">Propriété</span>
           <input
-            value={fields.dimension_property}
-            onChange={(e) => handleDimensionChange('dimension_property', e.target.value)}
+            value={fields.label_property}
+            onChange={(e) => handleDimensionChange('label_property', e.target.value)}
             placeholder="—"
             className="flex-1 text-sm text-[#1A1A18] bg-transparent border-none focus:outline-none min-w-0"
           />
           <button
-            onClick={() => {}}
             className="w-6 h-6 flex items-center justify-center border border-border rounded-full text-muted hover:text-primary flex-shrink-0"
           >
             <Plus size={12} />

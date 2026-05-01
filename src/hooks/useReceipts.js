@@ -58,7 +58,7 @@ export function useReceipts() {
   const confirmReceipt = useCallback(async (id, data) => {
     const { error } = await supabase
       .from('receipts')
-      .update({ ...data, status: 'confirmed', confirmed_at: new Date().toISOString() })
+      .update({ ...data, status: 'confirmed' })
       .eq('id', id)
     if (error) console.error('confirmReceipt:', error.message)
     return !error
@@ -94,23 +94,25 @@ export function useReceipts() {
   const deleteReceipt = useCallback(async (id) => {
     const { error } = await supabase
       .from('receipts')
-      .update({ status: 'deleted', deleted_at: new Date().toISOString() })
+      .update({ status: 'deleted' })
       .eq('id', id)
     if (error) console.error('deleteReceipt:', error.message)
     return !error
   }, [])
 
-  const createRecurringEntry = useCallback(async (receiptId, recurringData, receiptData) => {
+  const createRecurringEntry = useCallback(async (_receiptId, recurringData, receiptData) => {
     const { error } = await supabase.from('recurring_entries').insert({
       user_id: userId,
-      receipt_id: receiptId,
-      vendor: receiptData.vendor,
-      description: receiptData.description,
-      total: receiptData.total,
-      currency: receiptData.currency || 'CAD',
-      dimension_category: receiptData.dimension_category,
-      dimension_property: receiptData.dimension_property,
-      ...recurringData,
+      vendor: receiptData.vendor || '',
+      labels: receiptData.labels || {},
+      frequency: recurringData.frequency,
+      interval: recurringData.interval,
+      start_date: recurringData.start_date,
+      end_date: recurringData.end_date || null,
+      amount_type: recurringData.amount_type,
+      amount: receiptData.total ?? null,
+      source: 'manual',
+      active: true,
     })
     if (error) console.error('createRecurringEntry:', error.message)
     return !error

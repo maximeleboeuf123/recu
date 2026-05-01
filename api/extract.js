@@ -185,7 +185,7 @@ export default async function handler(req, res) {
   let patternMatch = null
   if (patterns?.length) {
     for (const p of patterns) {
-      if (fuzzyMatch(normalizeVendor(p.vendor_name), normalizedVendor)) {
+      if (fuzzyMatch(normalizeVendor(p.vendor_pattern), normalizedVendor)) {
         patternMatch = p
         break
       }
@@ -200,6 +200,7 @@ export default async function handler(req, res) {
     invoice_date: extracted.invoice_date,
     invoice_number: extracted.invoice_number,
     description: extracted.description,
+    keyword: extracted.keyword,
     subtotal: extracted.subtotal,
     gst: extracted.gst,
     qst: extracted.qst,
@@ -211,11 +212,10 @@ export default async function handler(req, res) {
     vendor_neq: extracted.vendor_neq,
     vendor_bn: extracted.vendor_bn,
     filename,
-    page_count: pages.length,
+    source: 'manual',
     extracted_raw: extracted,
     confidence_scores: confidenceScores,
-    dimension_category: patternMatch?.dimension_category ?? null,
-    dimension_property: patternMatch?.dimension_property ?? null,
+    labels: patternMatch?.labels ?? {},
   }
 
   const { data: receipt, error: dbError } = await supabase
@@ -235,7 +235,7 @@ export default async function handler(req, res) {
     const d = new Date(extracted.invoice_date)
     const { data: similar } = await supabase
       .from('receipts')
-      .select('id, vendor, total, invoice_date, confirmed_at')
+      .select('id, vendor, total, invoice_date, created_at')
       .eq('user_id', user.id)
       .eq('status', 'confirmed')
       .neq('id', receipt.id)

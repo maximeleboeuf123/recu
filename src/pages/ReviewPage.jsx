@@ -58,18 +58,13 @@ export default function ReviewPage() {
     if (!ok) return showToast(t('common.error'))
 
     // Pattern learning
-    if (merged.vendor && (merged.dimension_category || merged.dimension_property)) {
-      await savePattern(merged.vendor, {
-        dimension_category: merged.dimension_category || null,
-        dimension_property: merged.dimension_property || null,
-      })
+    if (merged.vendor && merged.labels) {
+      await savePattern(merged.vendor, merged.labels)
     }
 
-    // Propagate if pattern prompt was accepted
-    if (patternInfo?.vendor && (patternInfo.field?.includes('dimension'))) {
-      await applyPatternToPending(patternInfo.vendor, {
-        [patternInfo.field]: patternInfo.value,
-      })
+    // Propagate if pattern prompt was accepted (dimension field changed)
+    if (patternInfo?.vendor && patternInfo.field?.startsWith('label_')) {
+      await applyPatternToPending(patternInfo.vendor, merged.labels || {})
     }
 
     // Recurring entry
@@ -85,13 +80,10 @@ export default function ReviewPage() {
     const receipts = pendingReceipts.filter((r) => ids.includes(r.id))
     await Promise.all(receipts.map((r) => confirmReceipt(r.id, {})))
 
-    // Save pattern for first receipt with dimensions
-    const withDims = receipts.find((r) => r.dimension_category || r.dimension_property)
+    // Save pattern for first receipt that has labels set
+    const withDims = receipts.find((r) => r.labels?.category || r.labels?.property)
     if (withDims?.vendor) {
-      await savePattern(withDims.vendor, {
-        dimension_category: withDims.dimension_category,
-        dimension_property: withDims.dimension_property,
-      })
+      await savePattern(withDims.vendor, withDims.labels)
     }
 
     showToast(t('review.confirm_success', { count: ids.length }))

@@ -4,7 +4,8 @@
       "Bash(npm install *)",
       "Bash(node -e \"const pkg = require\\('./package.json'\\); console.log\\(pkg.dependencies['@anthropic-ai/sdk']\\)\")",
       "Bash(npm run *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

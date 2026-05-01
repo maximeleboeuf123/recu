@@ -11,15 +11,15 @@ export function usePatterns() {
     async (vendorName, labels) => {
       if (!userId || !vendorName) return
       const { error } = await supabase.from('patterns').upsert(
-        { user_id: userId, vendor_name: vendorName, ...labels, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id,vendor_name' },
+        { user_id: userId, vendor_pattern: vendorName, labels },
+        { onConflict: 'user_id,vendor_pattern' },
       )
       if (error) console.error('savePattern:', error.message)
     },
     [userId],
   )
 
-  // After updating a pattern, propagate new labels to all pending receipts from same vendor
+  // Propagate updated labels to all pending receipts from same vendor
   const applyPatternToPending = useCallback(
     async (vendorName, labels) => {
       if (!userId || !vendorName) return
@@ -36,7 +36,7 @@ export function usePatterns() {
         .map((r) => r.id)
       if (!ids.length) return
 
-      await supabase.from('receipts').update(labels).in('id', ids)
+      await supabase.from('receipts').update({ labels }).in('id', ids)
     },
     [userId],
   )

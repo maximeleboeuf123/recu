@@ -38,8 +38,8 @@ export default function RecurringFields({ value, onChange }) {
 
   const emitChange = (f, start, end, conf) => {
     onChange({
-      frequency_unit: f.unit,
-      frequency_interval: f.interval,
+      frequency: f.unit,
+      interval: f.interval,
       start_date: start,
       end_date: end || null,
       amount_type: conf,

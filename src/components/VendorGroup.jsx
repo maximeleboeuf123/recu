@@ -9,7 +9,7 @@ function groupCanBulkConfirmed(receipts) {
   return receipts.every((r) => {
     const conf = r.extracted_raw?.confidence || {}
     const allHigh = conf.overall === 'high' && conf.vendor === 'high' && conf.total === 'high'
-    const dimsOk = r.dimension_category && r.dimension_property
+    const dimsOk = r.labels?.category && r.labels?.property
     const amountsOk = r.total != null && r.total > 0
     return allHigh && dimsOk && amountsOk
   })
@@ -18,7 +18,7 @@ function groupCanBulkConfirmed(receipts) {
 function groupHasWarnings(receipts) {
   return receipts.some((r) => {
     const conf = r.extracted_raw?.confidence || {}
-    return conf.overall === 'medium' || !r.dimension_category || !r.dimension_property
+    return conf.overall === 'medium' || !r.labels?.category || !r.labels?.property
   })
 }
 
