@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { LedgerFilterProvider } from './context/LedgerFilterContext'
+import { ReceiptsProvider } from './context/ReceiptsContext'
 import Layout from './components/Layout'
 import AuthPage from './pages/AuthPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
@@ -35,7 +36,7 @@ export default function App() {
           {!session ? (
             <Route path="*" element={<AuthPage />} />
           ) : (
-            <Route element={<Layout />}>
+            <Route element={<ReceiptsProvider><Layout /></ReceiptsProvider>}>
               <Route path="/" element={<HomePage />} />
               <Route path="/review" element={<ReviewPage />} />
               <Route path="/ledger" element={<LedgerPage />} />
