@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { LedgerFilterProvider } from './context/LedgerFilterContext'
 import Layout from './components/Layout'
 import AuthPage from './pages/AuthPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
@@ -25,26 +26,27 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public routes — always accessible */}
-        <Route path="/auth/callback" element={<AuthCallbackPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/terms" element={<TermsPage />} />
+      <LedgerFilterProvider>
+        <Routes>
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
 
-        {!session ? (
-          <Route path="*" element={<AuthPage />} />
-        ) : (
-          <Route element={<Layout />}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/review" element={<ReviewPage />} />
-            <Route path="/ledger" element={<LedgerPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/receipt/:id" element={<ReceiptPage />} />
-            <Route path="/export" element={<ExportPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        )}
-      </Routes>
+          {!session ? (
+            <Route path="*" element={<AuthPage />} />
+          ) : (
+            <Route element={<Layout />}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/review" element={<ReviewPage />} />
+              <Route path="/ledger" element={<LedgerPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/receipt/:id" element={<ReceiptPage />} />
+              <Route path="/export" element={<ExportPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          )}
+        </Routes>
+      </LedgerFilterProvider>
     </BrowserRouter>
   )
 }

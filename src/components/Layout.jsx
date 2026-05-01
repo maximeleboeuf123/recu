@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import BottomNav from './BottomNav'
 import TopNav from './TopNav'
 import MobileHeader from './MobileHeader'
+import { useReceipts } from '../hooks/useReceipts'
 
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768)
@@ -17,6 +18,7 @@ function useIsDesktop() {
 
 export default function Layout() {
   const isDesktop = useIsDesktop()
+  const { pendingCount } = useReceipts()
 
   return (
     <div className="min-h-screen bg-background">
@@ -30,7 +32,7 @@ export default function Layout() {
       >
         <Outlet />
       </main>
-      {!isDesktop && <BottomNav />}
+      {!isDesktop && <BottomNav pendingCount={pendingCount} />}
     </div>
   )
 }

@@ -9,25 +9,83 @@
   },
   "home": {
     "capture_photo": "Photograph a receipt",
-    "upload_file": "Upload a file",
+    "upload_file": "Upload files",
     "pending_zero": "No receipts pending",
     "pending_one": "{{count}} receipt pending",
     "pending_other": "{{count}} receipts pending",
     "recent": "Recent receipts",
     "no_recent": "No receipts yet"
   },
+  "capture": {
+    "photo": "Photograph a receipt",
+    "upload": "Upload files",
+    "processing": "Processing... {{current}} / {{total}}",
+    "processing_pages": "Analysing... ({{count}} pages)",
+    "add_page": "Add another page",
+    "done_pages": "Done",
+    "same_receipt": "Are these pages of the same receipt?",
+    "yes_same": "Yes — one receipt",
+    "no_separate": "No — separate receipts",
+    "max_pages": "Maximum 10 pages per receipt",
+    "error_size": "File too large (max 10MB per page, 20MB total)",
+    "error_type": "File type not supported",
+    "error_rate": "Rate limit reached. Try again in an hour.",
+    "drag_drop": "Drag files here"
+  },
   "review": {
     "title": "Review Queue",
     "empty": "Nothing to review",
     "empty_sub": "Photograph a receipt or forward an invoice",
     "confirm": "Confirm",
-    "skip": "Skip"
+    "skip": "Skip",
+    "group_confirm": "Confirm all {{count}}",
+    "group_review": "Review one by one",
+    "swipe_right": "Swipe to confirm",
+    "swipe_left": "Swipe to skip",
+    "calculated": "calculated",
+    "low_confidence": "Low confidence — verify",
+    "pattern_applied": "Pre-filled from your history",
+    "always_assign": "Always assign {{vendor}} to {{value}}?",
+    "confirm_success": "{{count}} receipt(s) confirmed",
+    "pages": "{{count}} page(s)",
+    "recurring_checkbox": "Recurring invoice",
+    "recurring_frequency": "Frequency",
+    "recurring_start": "Start date",
+    "recurring_end": "End date",
+    "recurring_end_placeholder": "none",
+    "recurring_confirmation": "Confirmation",
+    "recurring_auto": "Auto-confirm (fixed amount)",
+    "recurring_review_amount": "Review amount each time",
+    "recurring_review_all": "Review all details",
+    "recurring_created": "Receipt confirmed + recurring entry created",
+    "freq_weekly": "Weekly",
+    "freq_monthly": "Monthly",
+    "freq_bimonthly": "Every 2 months",
+    "freq_quarterly": "Quarterly",
+    "freq_semestrial": "Semi-annual",
+    "freq_annual": "Annual",
+    "freq_custom": "Custom"
   },
   "ledger": {
     "title": "Ledger",
     "search": "Search...",
     "empty": "No receipts yet",
-    "export": "Export"
+    "export": "Export",
+    "pending_badge": "Pending",
+    "all": "All",
+    "this_month": "This month",
+    "vendor": "Vendor",
+    "category": "Category"
+  },
+  "receipt": {
+    "loading": "Loading receipt...",
+    "vendor": "Vendor",
+    "date": "Invoice date",
+    "invoice_number": "Invoice #",
+    "description": "Description",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "currency": "Currency"
   },
   "settings": {
     "title": "Settings",
@@ -47,9 +105,6 @@
     "cancel": "Cancel",
     "loading": "Loading...",
     "error": "Something went wrong"
-  },
-  "receipt": {
-    "loading": "Loading receipt..."
   },
   "export": {
     "title": "Export",

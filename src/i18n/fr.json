@@ -9,25 +9,83 @@
   },
   "home": {
     "capture_photo": "Photographier un reçu",
-    "upload_file": "Téléverser un fichier",
+    "upload_file": "Téléverser des fichiers",
     "pending_zero": "Aucun reçu en attente",
     "pending_one": "{{count}} reçu en attente",
     "pending_other": "{{count}} reçus en attente",
     "recent": "Reçus récents",
     "no_recent": "Aucun reçu pour l'instant"
   },
+  "capture": {
+    "photo": "Photographier un reçu",
+    "upload": "Téléverser des fichiers",
+    "processing": "Traitement en cours... {{current}} / {{total}}",
+    "processing_pages": "Analyse en cours... ({{count}} pages)",
+    "add_page": "Ajouter une page",
+    "done_pages": "Terminer",
+    "same_receipt": "S'agit-il du même reçu (plusieurs pages)?",
+    "yes_same": "Oui — un seul reçu",
+    "no_separate": "Non — reçus séparés",
+    "max_pages": "Maximum 10 pages par reçu",
+    "error_size": "Fichier trop volumineux (max 10 Mo par page, 20 Mo total)",
+    "error_type": "Type de fichier non supporté",
+    "error_rate": "Limite atteinte. Réessayez dans une heure.",
+    "drag_drop": "Glissez vos fichiers ici"
+  },
   "review": {
     "title": "À réviser",
     "empty": "Aucun reçu à réviser",
     "empty_sub": "Photographiez un reçu ou transférez une facture",
     "confirm": "Confirmer",
-    "skip": "Ignorer"
+    "skip": "Ignorer",
+    "group_confirm": "Confirmer les {{count}}",
+    "group_review": "Réviser un par un",
+    "swipe_right": "Glisser pour confirmer",
+    "swipe_left": "Glisser pour ignorer",
+    "calculated": "calculé",
+    "low_confidence": "Confiance faible — vérifier",
+    "pattern_applied": "Pré-rempli depuis vos habitudes",
+    "always_assign": "Toujours assigner {{vendor}} à {{value}}?",
+    "confirm_success": "{{count}} reçu(s) confirmé(s)",
+    "pages": "{{count}} page(s)",
+    "recurring_checkbox": "Facture récurrente",
+    "recurring_frequency": "Fréquence",
+    "recurring_start": "Date de début",
+    "recurring_end": "Date de fin",
+    "recurring_end_placeholder": "aucune",
+    "recurring_confirmation": "Confirmation",
+    "recurring_auto": "Auto-confirmer (montant fixe)",
+    "recurring_review_amount": "Réviser le montant chaque fois",
+    "recurring_review_all": "Réviser tous les détails",
+    "recurring_created": "Reçu confirmé + entrée récurrente créée",
+    "freq_weekly": "Hebdomadaire",
+    "freq_monthly": "Mensuel",
+    "freq_bimonthly": "Bimestriel",
+    "freq_quarterly": "Trimestriel",
+    "freq_semestrial": "Semestriel",
+    "freq_annual": "Annuel",
+    "freq_custom": "Personnalisé"
   },
   "ledger": {
     "title": "Grand livre",
     "search": "Rechercher...",
     "empty": "Aucun reçu pour l'instant",
-    "export": "Exporter"
+    "export": "Exporter",
+    "pending_badge": "En attente",
+    "all": "Tous",
+    "this_month": "Ce mois",
+    "vendor": "Fournisseur",
+    "category": "Catégorie"
+  },
+  "receipt": {
+    "loading": "Chargement du reçu...",
+    "vendor": "Fournisseur",
+    "date": "Date facture",
+    "invoice_number": "No. facture",
+    "description": "Description",
+    "subtotal": "Sous-total",
+    "total": "Total",
+    "currency": "Devise"
   },
   "settings": {
     "title": "Paramètres",
@@ -47,9 +105,6 @@
     "cancel": "Annuler",
     "loading": "Chargement...",
     "error": "Une erreur est survenue"
-  },
-  "receipt": {
-    "loading": "Chargement du reçu..."
   },
   "export": {
     "title": "Exporter",
