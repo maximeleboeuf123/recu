@@ -111,7 +111,7 @@
     "connect": "Connecter Google Drive",
     "connected": "Google Drive connecté",
     "disconnected": "Non connecté",
-    "inbox_ready": "Récu/_Inbox prêt",
+    "inbox_ready": "Récu/_Factures prêt",
     "files_saved": "{{count}} fichier(s) sauvegardé(s)",
     "last_sync": "Dernière sync : il y a {{time}}",
     "open_in_drive": "Ouvrir dans Drive",

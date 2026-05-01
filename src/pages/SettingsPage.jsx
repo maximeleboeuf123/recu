@@ -176,7 +176,7 @@ function DriveSection({ session, driveState, loading, onRefresh, showToast }) {
             <p className="text-sm font-medium text-[#1A1A18]">{t('settings.drive')}</p>
             <CheckCircle size={13} className="text-success flex-shrink-0" />
           </div>
-          <p className="text-xs text-muted mt-0.5">Récu/_Inbox</p>
+          <p className="text-xs text-muted mt-0.5">Récu/_Factures</p>
         </div>
       </div>
 

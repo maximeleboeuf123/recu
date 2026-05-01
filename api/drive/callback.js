@@ -66,7 +66,7 @@ export default async function handler(req, res) {
   if (!userData?.drive_folder_id) {
     try {
       const root = await createDriveFolder(tokens.access_token, 'Récu', null)
-      const inbox = await createDriveFolder(tokens.access_token, '_Inbox', root.id)
+      const inbox = await createDriveFolder(tokens.access_token, '_Factures', root.id)
       await createDriveFolder(tokens.access_token, '_Exports', root.id)
 
       await serviceClient.from('users').update({
