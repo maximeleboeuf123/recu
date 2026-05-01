@@ -6,11 +6,18 @@ export default function handler(req, res) {
   const user = getUserFromReq(req)
   if (!user) return res.status(401).json({ error: 'Unauthorized' })
 
+  const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID
+  const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET
+  console.log('Drive env check — clientId present:', !!clientId, '| clientSecret present:', !!clientSecret)
+  if (!clientId || !clientSecret) {
+    return res.status(500).json({ error: 'drive_not_configured', clientId: clientId ?? 'MISSING', clientSecret: clientSecret ? 'SET' : 'MISSING' })
+  }
+
   const state = Buffer.from(user.userId).toString('base64url')
   const redirectUri = `${_appOrigin(req)}/api/drive/callback`
 
   const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_DRIVE_CLIENT_ID,
+    client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'https://www.googleapis.com/auth/drive.file',
