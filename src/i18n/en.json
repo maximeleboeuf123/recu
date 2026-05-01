@@ -81,7 +81,8 @@
     "all": "All",
     "this_month": "This month",
     "vendor": "Vendor",
-    "category": "Category"
+    "category": "Category",
+    "approve": "Approve"
   },
   "receipt": {
     "loading": "Loading receipt...",
@@ -123,7 +124,8 @@
     "connect_prompt": "Connect Google Drive to save your files",
     "reconnect": "Reconnect Google Drive",
     "connecting": "Connecting...",
-    "disconnecting": "Disconnecting..."
+    "disconnecting": "Disconnecting...",
+    "delete_warning": "This will also permanently delete the file from Google Drive."
   },
   "common": {
     "save": "Save",

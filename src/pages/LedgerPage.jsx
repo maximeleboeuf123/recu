@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Search, BookOpen, FolderOpen } from 'lucide-react'
 import { useReceipts } from '../hooks/useReceipts'
 import { usePatterns } from '../hooks/usePatterns'
+import { useDriveActions } from '../hooks/useDriveActions'
 import { useLedgerFilters } from '../context/LedgerFilterContext'
 import ReviewCard from '../components/ReviewCard'
 import FolderPicker from '../components/FolderPicker'
@@ -16,8 +17,9 @@ const THIS_MONTH = () => {
 
 export default function LedgerPage() {
   const { t } = useTranslation()
-  const { receipts, loading, updateReceipt, deleteReceipt } = useReceipts()
+  const { receipts, loading, updateReceipt, deleteReceipt, confirmReceipt } = useReceipts()
   const { savePattern, applyPatternToPending } = usePatterns()
+  const { renameToFinal, deleteFromDrive } = useDriveActions()
   const { filters, setSearch, setChip, resetFilters } = useLedgerFilters()
 
   const [expandedId, setExpandedId] = useState(null)
@@ -60,16 +62,23 @@ export default function LedgerPage() {
   }, [receipts, filters])
 
   const handleDelete = async (id) => {
+    const receipt = receipts.find((r) => r.id === id)
     const ok = await deleteReceipt(id)
     if (!ok) return showToast(t('common.error'))
+    if (receipt?.drive_file_id) deleteFromDrive(receipt.drive_file_id)
     setExpandedId(null)
     showToast(t('review.deleted'))
   }
 
   const handleSave = async (id, data, _recurring, patternInfo) => {
     const original = receipts.find((r) => r.id === id)
-    const ok = await updateReceipt(id, data, original)
+    const isApproval = original?.status === 'pending'
+    const ok = isApproval
+      ? await confirmReceipt(id, data)
+      : await updateReceipt(id, data, original)
     if (!ok) return showToast(t('common.error'))
+
+    if (isApproval && original.drive_file_id) renameToFinal(original.drive_file_id)
 
     // Pattern update if dimensions changed
     if (data.vendor && data.labels) {
@@ -84,7 +93,7 @@ export default function LedgerPage() {
     }
 
     setExpandedId(null)
-    showToast(t('common.save'))
+    showToast(isApproval ? t('review.confirm_success', { count: 1 }) : t('common.save'))
   }
 
   if (loading) {

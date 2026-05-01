@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ClipboardX, Camera, Upload } from 'lucide-react'
 import { useReceipts } from '../hooks/useReceipts'
 import { usePatterns } from '../hooks/usePatterns'
+import { useDriveActions } from '../hooks/useDriveActions'
 import VendorGroup from '../components/VendorGroup'
 import { normalizeVendor, fuzzyMatch } from '../lib/utils'
 
@@ -39,6 +40,7 @@ export default function ReviewPage() {
   const navigate = useNavigate()
   const { pendingReceipts, loading, confirmReceipt, deleteReceipt, createRecurringEntry } = useReceipts()
   const { savePattern, applyPatternToPending } = usePatterns()
+  const { renameToFinal, deleteFromDrive } = useDriveActions()
 
   const [skippedIds, setSkippedIds] = useState(new Set())
   const [toast, setToast] = useState(null)
@@ -56,6 +58,8 @@ export default function ReviewPage() {
 
     const ok = await confirmReceipt(id, data)
     if (!ok) return showToast(t('common.error'))
+
+    if (receipt?.drive_file_id) renameToFinal(receipt.drive_file_id)
 
     // Pattern learning
     if (merged.vendor && merged.labels) {
@@ -79,6 +83,7 @@ export default function ReviewPage() {
   const handleConfirmAll = async (ids) => {
     const receipts = pendingReceipts.filter((r) => ids.includes(r.id))
     await Promise.all(receipts.map((r) => confirmReceipt(r.id, {})))
+    receipts.filter((r) => r.drive_file_id).forEach((r) => renameToFinal(r.drive_file_id))
 
     // Save pattern for first receipt that has labels set
     const withDims = receipts.find((r) => r.labels?.category || r.labels?.property)
@@ -95,9 +100,13 @@ export default function ReviewPage() {
   }
 
   const handleDeleteOne = async (id) => {
+    const receipt = pendingReceipts.find((r) => r.id === id)
     const ok = await deleteReceipt(id)
     if (!ok) showToast(t('common.error'))
-    else showToast(t('review.deleted'))
+    else {
+      if (receipt?.drive_file_id) deleteFromDrive(receipt.drive_file_id)
+      showToast(t('review.deleted'))
+    }
   }
 
   if (loading) {

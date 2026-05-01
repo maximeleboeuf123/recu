@@ -4,14 +4,16 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
 import { useReceipts } from '../hooks/useReceipts'
 import { usePatterns } from '../hooks/usePatterns'
+import { useDriveActions } from '../hooks/useDriveActions'
 import ReviewCard from '../components/ReviewCard'
 
 export default function ReceiptPage() {
   const { id } = useParams()
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { receipts, loading, updateReceipt, deleteReceipt } = useReceipts()
+  const { receipts, loading, updateReceipt, deleteReceipt, confirmReceipt } = useReceipts()
   const { savePattern, applyPatternToPending } = usePatterns()
+  const { renameToFinal, deleteFromDrive } = useDriveActions()
   const [toast, setToast] = useState(null)
 
   const receipt = receipts.find((r) => r.id === id)
@@ -23,10 +25,15 @@ export default function ReceiptPage() {
 
   const handleSave = async (receiptId, data, _recurring, _patternInfo) => {
     const original = receipts.find((r) => r.id === receiptId)
-    const ok = await updateReceipt(receiptId, data, original)
+    const isApproval = original?.status === 'pending'
+    const ok = isApproval
+      ? await confirmReceipt(receiptId, data)
+      : await updateReceipt(receiptId, data, original)
     if (!ok) return showToast(t('common.error'))
 
-    if (data.vendor && data.labels) {
+    if (isApproval && original.drive_file_id) renameToFinal(original.drive_file_id)
+
+    if (!isApproval && data.vendor && data.labels) {
       const dimChanged =
         original?.labels?.category !== data.labels.category ||
         original?.labels?.property !== data.labels.property
@@ -35,12 +42,14 @@ export default function ReceiptPage() {
         await applyPatternToPending(data.vendor, data.labels)
       }
     }
-    showToast(t('common.save'))
+    showToast(isApproval ? t('review.confirm_success', { count: 1 }) : t('common.save'))
   }
 
   const handleDelete = async (receiptId) => {
+    const receipt = receipts.find((r) => r.id === receiptId)
     const ok = await deleteReceipt(receiptId)
     if (!ok) return showToast(t('common.error'))
+    if (receipt?.drive_file_id) deleteFromDrive(receipt.drive_file_id)
     navigate(-1)
   }
 

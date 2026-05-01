@@ -93,6 +93,14 @@ export async function listSubfolders(accessToken, parentId) {
   return data.files || []
 }
 
+export async function deleteFile(accessToken, fileId) {
+  const res = await fetch(`${DRIVE_API}/files/${fileId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!res.ok && res.status !== 404) throw new Error(`Delete file failed: ${res.status}`)
+}
+
 export async function revokeAccessToken(accessToken) {
   await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(accessToken)}`, {
     method: 'POST',

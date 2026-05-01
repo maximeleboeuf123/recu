@@ -295,7 +295,7 @@ async function _handler(req, res) {
       if (accessToken) {
         const firstPage = pages[0]
         const ext = firstPage.mimeType === 'application/pdf' ? '.pdf' : '.jpg'
-        const driveFilename = `${filename}${ext}`
+        const driveFilename = `${filename} - for_review${ext}`
         const uploaded = await uploadFileToDrive(
           accessToken, driveFilename, firstPage.mimeType, firstPage.fileBase64, userData.drive_inbox_id
         )

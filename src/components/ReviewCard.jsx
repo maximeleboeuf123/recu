@@ -121,6 +121,19 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
         </p>
       </div>
 
+      {/* Inline preview — visible by default in review mode */}
+      {mode === 'review' && receipt.drive_file_id && (
+        <div className="border-b border-border bg-black/5">
+          <iframe
+            src={`https://drive.google.com/file/d/${receipt.drive_file_id}/preview`}
+            className="w-full border-0"
+            style={{ height: '220px' }}
+            allow="autoplay"
+            title="Receipt preview"
+          />
+        </div>
+      )}
+
       {/* Duplicate warning */}
       {receipt.possibleDuplicate && (
         <div className="flex items-start gap-2 px-4 py-2 bg-warning/10 border-b border-warning/30">
@@ -266,19 +279,24 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
               {t('review.confirm')}
             </button>
             {confirmingDelete ? (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setConfirmingDelete(false)}
-                  className="flex-1 py-2.5 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  onClick={() => onDelete?.(receipt.id)}
-                  className="flex-1 py-2.5 text-sm text-error border border-error/40 bg-error/5 rounded-[8px] font-medium active:scale-[0.98] transition-transform"
-                >
-                  {t('review.delete_confirm')}
-                </button>
+              <div className="space-y-2">
+                {receipt.drive_file_id && (
+                  <p className="text-xs text-error/80 text-center px-2">{t('drive.delete_warning')}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setConfirmingDelete(false)}
+                    className="flex-1 py-2.5 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    onClick={() => onDelete?.(receipt.id)}
+                    className="flex-1 py-2.5 text-sm text-error border border-error/40 bg-error/5 rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                  >
+                    {t('review.delete_confirm')}
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex gap-2">
@@ -300,19 +318,24 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
         ) : (
           <>
             {confirmingDelete ? (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setConfirmingDelete(false)}
-                  className="flex-1 py-2.5 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  onClick={() => onDelete?.(receipt.id)}
-                  className="flex-1 py-2.5 text-sm text-error border border-error/40 bg-error/5 rounded-[8px] font-medium active:scale-[0.98] transition-transform"
-                >
-                  {t('review.delete_confirm')}
-                </button>
+              <div className="space-y-2">
+                {receipt.drive_file_id && (
+                  <p className="text-xs text-error/80 text-center px-2">{t('drive.delete_warning')}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setConfirmingDelete(false)}
+                    className="flex-1 py-2.5 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    onClick={() => onDelete?.(receipt.id)}
+                    className="flex-1 py-2.5 text-sm text-error border border-error/40 bg-error/5 rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                  >
+                    {t('review.delete_confirm')}
+                  </button>
+                </div>
               </div>
             ) : (
               <>
@@ -323,13 +346,22 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
                   >
                     {t('common.cancel')}
                   </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={!dirty}
-                    className="flex-1 py-2.5 text-sm bg-primary text-white rounded-[8px] font-medium active:scale-[0.98] transition-transform disabled:opacity-40"
-                  >
-                    {t('common.save')}
-                  </button>
+                  {receipt.status === 'pending' ? (
+                    <button
+                      onClick={() => onConfirm?.(receipt.id, buildData(), null, patternPrompt)}
+                      className="flex-1 py-2.5 text-sm bg-primary text-white rounded-[8px] font-medium active:scale-[0.98] transition-transform"
+                    >
+                      {t('ledger.approve')}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSave}
+                      disabled={!dirty}
+                      className="flex-1 py-2.5 text-sm bg-primary text-white rounded-[8px] font-medium active:scale-[0.98] transition-transform disabled:opacity-40"
+                    >
+                      {t('common.save')}
+                    </button>
+                  )}
                 </div>
                 <button
                   onClick={() => setConfirmingDelete(true)}
@@ -343,7 +375,6 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
         )}
       </div>
     </div>
-    </>
   )
 }
 

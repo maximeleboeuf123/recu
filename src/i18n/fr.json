@@ -81,7 +81,8 @@
     "all": "Tous",
     "this_month": "Ce mois",
     "vendor": "Fournisseur",
-    "category": "Catégorie"
+    "category": "Catégorie",
+    "approve": "Approuver"
   },
   "receipt": {
     "loading": "Chargement du reçu...",
@@ -123,7 +124,8 @@
     "connect_prompt": "Connectez Google Drive pour sauvegarder vos fichiers",
     "reconnect": "Reconnecter Google Drive",
     "connecting": "Connexion...",
-    "disconnecting": "Déconnexion..."
+    "disconnecting": "Déconnexion...",
+    "delete_warning": "Cette action supprimera aussi le fichier définitivement de Google Drive."
   },
   "common": {
     "save": "Enregistrer",
