@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Pencil, AlertTriangle, Info, Plus, ChevronDown, FileText, X } from 'lucide-react'
 import RecurringFields from './RecurringFields'
@@ -69,31 +70,30 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   const qstCalculated = scores.qst_source === 'calculated'
 
   return (
-    <>
-    {/* Document viewer overlay */}
-    {viewingDoc && receipt.drive_file_id && (
-      <div className="fixed inset-0 bg-black z-[400] flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-        <div className="flex items-center justify-between px-4 py-3 bg-surface border-b border-border flex-shrink-0">
-          <span className="text-sm font-medium text-[#1A1A18] truncate pr-4">
-            {receipt.filename || fields.vendor || '—'}
-          </span>
-          <button
-            onClick={() => setViewingDoc(false)}
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-background transition-colors"
-          >
-            <X size={20} className="text-muted" />
-          </button>
-        </div>
-        <iframe
-          src={`https://drive.google.com/file/d/${receipt.drive_file_id}/preview`}
-          className="flex-1 w-full border-0"
-          allow="autoplay"
-          title="Receipt document"
-        />
-      </div>
-    )}
-
     <div className="bg-surface border border-border rounded-[8px] overflow-hidden">
+      {/* Document viewer — rendered via portal so it escapes any overflow-hidden parent */}
+      {viewingDoc && receipt.drive_file_id && createPortal(
+        <div className="fixed inset-0 bg-black z-[400] flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+          <div className="flex items-center justify-between px-4 py-3 bg-surface border-b border-border flex-shrink-0">
+            <span className="text-sm font-medium text-[#1A1A18] truncate pr-4">
+              {receipt.filename || fields.vendor || '—'}
+            </span>
+            <button
+              onClick={() => setViewingDoc(false)}
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-background transition-colors"
+            >
+              <X size={20} className="text-muted" />
+            </button>
+          </div>
+          <iframe
+            src={`https://drive.google.com/file/d/${receipt.drive_file_id}/preview`}
+            className="flex-1 w-full border-0"
+            allow="autoplay"
+            title="Receipt document"
+          />
+        </div>,
+        document.body
+      )}
       {/* Header */}
       <div className="flex items-start gap-3 p-4 border-b border-border bg-background/40">
         <button

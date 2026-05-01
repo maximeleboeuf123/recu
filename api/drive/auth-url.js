@@ -8,9 +8,8 @@ export default function handler(req, res) {
 
   const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET
-  console.log('Drive env check — clientId present:', !!clientId, '| clientSecret present:', !!clientSecret)
   if (!clientId || !clientSecret) {
-    return res.status(500).json({ error: 'drive_not_configured', clientId: clientId ?? 'MISSING', clientSecret: clientSecret ? 'SET' : 'MISSING' })
+    return res.status(500).json({ error: 'drive_not_configured' })
   }
 
   const state = Buffer.from(user.userId).toString('base64url')
