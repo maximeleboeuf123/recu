@@ -90,6 +90,8 @@
     "date": "Date facture",
     "invoice_number": "No. facture",
     "description": "Description",
+    "account": "Compte",
+    "category": "Catégorie",
     "subtotal": "Sous-total",
     "total": "Total",
     "currency": "Devise"

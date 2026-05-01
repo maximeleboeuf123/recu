@@ -146,11 +146,23 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
 
       {/* Fields */}
       <div className="divide-y divide-border/60">
-        <EditRow label={t('receipt.vendor') || 'Fournisseur'} value={fields.vendor} onSave={(v) => set('vendor', v)} />
-        <EditRow label={t('receipt.date') || 'Date facture'} value={fields.invoice_date} onSave={(v) => set('invoice_date', v)} type="date" />
-        <EditRow label={t('receipt.invoice_number') || 'No. facture'} value={fields.invoice_number} onSave={(v) => set('invoice_number', v)} />
-        <EditRow label={t('receipt.description') || 'Description'} value={fields.description} onSave={(v) => set('description', v)} />
-        <EditRow label={t('receipt.subtotal') || 'Sous-total'} value={fields.subtotal} onSave={(v) => set('subtotal', v)} type="number" />
+        <EditRow label={t('receipt.vendor')} value={fields.vendor} onSave={(v) => set('vendor', v)} />
+        <EditRow label={t('receipt.date')} value={fields.invoice_date} onSave={(v) => set('invoice_date', v)} type="date" />
+        <EditRow label={t('receipt.invoice_number')} value={fields.invoice_number} onSave={(v) => set('invoice_number', v)} />
+        <EditRow label={t('receipt.description')} value={fields.description} onSave={(v) => set('description', v)} />
+
+        {/* Dimensions — Account & Category */}
+        <DimensionRow label={t('receipt.account')} value={fields.label_property} onChange={(v) => handleDimensionChange('label_property', v)} />
+        <DimensionRow label={t('receipt.category')} value={fields.label_category} onChange={(v) => handleDimensionChange('label_category', v)} />
+
+        <EditRow
+          label={t('receipt.total')}
+          value={fields.total}
+          onSave={(v) => set('total', v)}
+          type="number"
+          lowConfidence={conf.total === 'low'}
+        />
+        <EditRow label={t('receipt.subtotal')} value={fields.subtotal} onSave={(v) => set('subtotal', v)} type="number" />
         <EditRow
           label="TPS / GST"
           value={fields.gst}
@@ -169,17 +181,10 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
         {(fields.hst !== '' && fields.hst != null) && (
           <EditRow label="HST" value={fields.hst} onSave={(v) => set('hst', v)} type="number" />
         )}
-        <EditRow
-          label={t('receipt.total') || 'Total'}
-          value={fields.total}
-          onSave={(v) => set('total', v)}
-          type="number"
-          lowConfidence={conf.total === 'low'}
-        />
 
         {/* Currency */}
         <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="text-sm text-muted w-28 flex-shrink-0">{t('receipt.currency') || 'Devise'}</span>
+          <span className="text-sm text-muted w-28 flex-shrink-0">{t('receipt.currency')}</span>
           <select
             value={fields.currency}
             onChange={(e) => set('currency', e.target.value)}
@@ -194,36 +199,6 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
         {/* Vendor numbers */}
         <EditRow label="No. TPS" value={fields.vendor_gst_number} onSave={(v) => set('vendor_gst_number', v)} />
         <EditRow label="No. TVQ" value={fields.vendor_qst_number} onSave={(v) => set('vendor_qst_number', v)} />
-
-        {/* Dimensions */}
-        <div className="px-4 py-2.5 flex items-center gap-2">
-          <span className="text-sm text-muted w-28 flex-shrink-0">Catégorie</span>
-          <input
-            value={fields.label_category}
-            onChange={(e) => handleDimensionChange('label_category', e.target.value)}
-            placeholder="—"
-            className="flex-1 text-sm text-[#1A1A18] bg-transparent border-none focus:outline-none min-w-0"
-          />
-          <button
-            className="w-6 h-6 flex items-center justify-center border border-border rounded-full text-muted hover:text-primary flex-shrink-0"
-          >
-            <Plus size={12} />
-          </button>
-        </div>
-        <div className="px-4 py-2.5 flex items-center gap-2">
-          <span className="text-sm text-muted w-28 flex-shrink-0">Propriété</span>
-          <input
-            value={fields.label_property}
-            onChange={(e) => handleDimensionChange('label_property', e.target.value)}
-            placeholder="—"
-            className="flex-1 text-sm text-[#1A1A18] bg-transparent border-none focus:outline-none min-w-0"
-          />
-          <button
-            className="w-6 h-6 flex items-center justify-center border border-border rounded-full text-muted hover:text-primary flex-shrink-0"
-          >
-            <Plus size={12} />
-          </button>
-        </div>
       </div>
 
       {/* Warnings */}
@@ -426,6 +401,23 @@ function EditRow({ label, value, onSave, type = 'text', badge, lowConfidence }) 
           <Pencil size={11} className="text-border flex-shrink-0" />
         )}
       </div>
+    </div>
+  )
+}
+
+function DimensionRow({ label, value, onChange }) {
+  return (
+    <div className="px-4 py-2.5 flex items-center gap-2">
+      <span className="text-sm text-muted w-28 flex-shrink-0">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="—"
+        className="flex-1 text-sm text-[#1A1A18] bg-transparent border-none focus:outline-none min-w-0"
+      />
+      <button className="w-6 h-6 flex items-center justify-center border border-border rounded-full text-muted hover:text-primary flex-shrink-0">
+        <Plus size={12} />
+      </button>
     </div>
   )
 }

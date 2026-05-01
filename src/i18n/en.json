@@ -90,6 +90,8 @@
     "date": "Invoice date",
     "invoice_number": "Invoice #",
     "description": "Description",
+    "account": "Account",
+    "category": "Category",
     "subtotal": "Subtotal",
     "total": "Total",
     "currency": "Currency"
