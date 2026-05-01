@@ -30,7 +30,7 @@ export default function CameraCapture({ onSubmit, onClose }) {
   const handleFinish = async () => {
     if (!pages.length) return onClose()
     setProcessing(true)
-    await onSubmit(pages.map(({ fileBase64, mimeType }) => ({ fileBase64, mimeType })))
+    await onSubmit(pages.map(({ base64, mimeType }) => ({ fileBase64: base64, mimeType })))
     setProcessing(false)
   }
 
