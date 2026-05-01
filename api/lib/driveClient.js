@@ -101,6 +101,27 @@ export async function deleteFile(accessToken, fileId) {
   if (!res.ok && res.status !== 404) throw new Error(`Delete file failed: ${res.status}`)
 }
 
+export async function findOrCreateFolder(accessToken, name, parentId) {
+  const q = encodeURIComponent(
+    `'${parentId}' in parents and name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+  )
+  const res = await fetch(`${DRIVE_API}/files?q=${q}&fields=files(id,name)`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  const data = await res.json()
+  if (data.files?.length > 0) return data.files[0]
+  return createDriveFolder(accessToken, name, parentId)
+}
+
+export async function findFilesByName(accessToken, name, folderId) {
+  const q = encodeURIComponent(`'${folderId}' in parents and name='${name}' and trashed=false`)
+  const res = await fetch(`${DRIVE_API}/files?q=${q}&fields=files(id)`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  const data = await res.json()
+  return data.files || []
+}
+
 export async function revokeAccessToken(accessToken) {
   await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(accessToken)}`, {
     method: 'POST',
