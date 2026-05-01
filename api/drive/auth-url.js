@@ -12,7 +12,8 @@ export default function handler(req, res) {
     return res.status(500).json({ error: 'drive_not_configured' })
   }
 
-  const state = Buffer.from(user.userId).toString('base64url')
+  const lang = req.query?.lang === 'en' ? 'en' : 'fr'
+  const state = Buffer.from(JSON.stringify({ userId: user.userId, lang })).toString('base64url')
   const redirectUri = `${_appOrigin(req)}/api/drive/callback`
 
   const params = new URLSearchParams({

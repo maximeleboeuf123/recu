@@ -54,9 +54,9 @@ export default function FolderPicker({ receipt, onClose }) {
     handleCopy(null, name)
   }
 
-  // Visually separate _Factures and _Exports from user folders
-  const systemFolders = folders.filter((f) => f.name === '_Factures' || f.name === '_Exports')
-  const userFolders = folders.filter((f) => f.name !== '_Factures' && f.name !== '_Exports')
+  const SYSTEM_FOLDERS = new Set(['_Factures', '_Receipts', '_Exports'])
+  const systemFolders = folders.filter((f) => SYSTEM_FOLDERS.has(f.name))
+  const userFolders = folders.filter((f) => !SYSTEM_FOLDERS.has(f.name))
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[300] flex items-end sm:items-center justify-center p-4">
@@ -87,7 +87,7 @@ export default function FolderPicker({ receipt, onClose }) {
                 >
                   <Folder size={16} className="flex-shrink-0" />
                   <span>{f.name}</span>
-                  {f.name === '_Factures' && (
+                  {(f.name === '_Factures' || f.name === '_Receipts') && (
                     <span className="ml-auto text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5">
                       source
                     </span>

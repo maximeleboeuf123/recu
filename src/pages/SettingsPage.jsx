@@ -100,14 +100,14 @@ export default function SettingsPage() {
 }
 
 function DriveSection({ session, driveState, loading, onRefresh, showToast }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
 
   const handleConnect = async () => {
     setConnecting(true)
     try {
-      const res = await fetch('/api/drive/auth-url', {
+      const res = await fetch(`/api/drive/auth-url?lang=${i18n.language}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
       if (!res.ok) throw new Error('auth-url failed')
@@ -176,7 +176,7 @@ function DriveSection({ session, driveState, loading, onRefresh, showToast }) {
             <p className="text-sm font-medium text-[#1A1A18]">{t('settings.drive')}</p>
             <CheckCircle size={13} className="text-success flex-shrink-0" />
           </div>
-          <p className="text-xs text-muted mt-0.5">Récu/_Factures</p>
+          <p className="text-xs text-muted mt-0.5">Récu/{i18n.language === 'en' ? '_Receipts' : '_Factures'}</p>
         </div>
       </div>
 

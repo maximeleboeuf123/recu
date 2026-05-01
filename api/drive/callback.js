@@ -13,9 +13,17 @@ export default async function handler(req, res) {
     return res.redirect(`${appOrigin}/settings?drive=error`)
   }
 
-  let userId
+  let userId, lang
   try {
-    userId = Buffer.from(state, 'base64url').toString('utf8')
+    const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'))
+    // Support legacy plain-string state (old connections)
+    if (typeof decoded === 'string') {
+      userId = decoded
+      lang = 'fr'
+    } else {
+      userId = decoded.userId
+      lang = decoded.lang || 'fr'
+    }
     if (!userId) throw new Error('empty')
   } catch {
     return res.redirect(`${appOrigin}/settings?drive=error`)
@@ -66,7 +74,8 @@ export default async function handler(req, res) {
   if (!userData?.drive_folder_id) {
     try {
       const root = await createDriveFolder(tokens.access_token, 'Récu', null)
-      const inbox = await createDriveFolder(tokens.access_token, '_Factures', root.id)
+      const inboxName = lang === 'en' ? '_Receipts' : '_Factures'
+      const inbox = await createDriveFolder(tokens.access_token, inboxName, root.id)
       await createDriveFolder(tokens.access_token, '_Exports', root.id)
 
       await serviceClient.from('users').update({
