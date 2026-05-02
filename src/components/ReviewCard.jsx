@@ -54,6 +54,8 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   const [dirty, setDirty] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [viewingDoc, setViewingDoc] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const nameInputRef = useRef(null)
   // null = no taxes applied, 'gstqst' = Quebec taxes, 'hst' = Ontario/Atlantic HST
   const [taxMode, setTaxMode] = useState(null)
 
@@ -176,7 +178,25 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
           <span>{receipt.page_count || 1}p</span>
         </button>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-[#1A1A18] truncate">{fields.vendor || '—'}</p>
+          {editingName ? (
+            <input
+              ref={nameInputRef}
+              className="font-semibold text-[#1A1A18] bg-transparent border-b border-primary focus:outline-none w-full truncate"
+              value={fields.vendor}
+              onChange={(e) => set('vendor', e.target.value)}
+              onBlur={() => setEditingName(false)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingName(false) }}
+              autoFocus
+            />
+          ) : (
+            <p
+              className="font-semibold text-[#1A1A18] truncate cursor-pointer flex items-center gap-1.5 group"
+              onClick={() => { setEditingName(true) }}
+            >
+              <span className="truncate">{fields.vendor || <span className="text-muted font-normal">—</span>}</span>
+              <Pencil size={11} className="text-border flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </p>
+          )}
           <p className="text-sm text-muted mt-0.5">
             {fields.invoice_date || '—'}
             {fields.invoice_number ? ` · ${fields.invoice_number}` : ''}

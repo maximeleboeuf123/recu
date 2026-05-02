@@ -37,7 +37,6 @@ export default function ManualReceiptForm({ lang, initialValues, isRecurring, dr
   const { accountsWithCategories } = useDimensions()
 
   const [fields, setFields] = useState({
-    name: initialValues.description || '',
     vendor: initialValues.vendor || '',
     invoice_date: !isRecurring ? (initialValues.invoice_date || today()) : '',
     invoice_number: initialValues.invoice_number || '',
@@ -119,9 +118,8 @@ export default function ManualReceiptForm({ lang, initialValues, isRecurring, dr
   const categoryOptions = selectedAccount?.categories || []
 
   const buildReceiptData = () => {
-    const { label_category, label_property, name, ...rest } = fields
+    const { label_category, label_property, ...rest } = fields
     const data = { ...rest }
-    data.description = name || null
     for (const k of ['subtotal', 'gst', 'qst', 'hst', 'total']) {
       data[k] = (data[k] !== '' && data[k] != null) ? parseFloat(data[k]) : null
     }
@@ -177,12 +175,13 @@ export default function ManualReceiptForm({ lang, initialValues, isRecurring, dr
             {lang === 'en' ? 'Receipt details' : 'Détails du reçu'}
           </p>
           <div className={rowClass}>
-            <span className={labelClass}>{lang === 'en' ? 'Vendor' : 'Fournisseur'}</span>
+            <span className={labelClass}>{lang === 'en' ? 'Name' : 'Nom'}</span>
             <input
               className={inputClass}
               placeholder="—"
               value={fields.vendor}
               onChange={(e) => setField('vendor', e.target.value)}
+              autoFocus
             />
           </div>
           {!isRecurring && (
@@ -203,15 +202,6 @@ export default function ManualReceiptForm({ lang, initialValues, isRecurring, dr
               placeholder="—"
               value={fields.invoice_number}
               onChange={(e) => setField('invoice_number', e.target.value)}
-            />
-          </div>
-          <div className={rowClass}>
-            <span className={labelClass}>{lang === 'en' ? 'Name' : 'Nom'}</span>
-            <input
-              className={inputClass}
-              placeholder="—"
-              value={fields.name}
-              onChange={(e) => setField('name', e.target.value)}
             />
           </div>
         </div>
