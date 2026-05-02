@@ -1,6 +1,6 @@
 {
   "app": { "name": "Récu", "tagline": "Your receipts, finally organized." },
-  "nav": { "home": "Home", "upload": "Upload", "review": "Review", "ledger": "Ledger", "settings": "Settings" },
+  "nav": { "home": "Home", "upload": "Capture", "review": "Review", "ledger": "Ledger", "settings": "Settings" },
   "auth": {
     "signin": "Sign in with Google",
     "signout": "Sign out",

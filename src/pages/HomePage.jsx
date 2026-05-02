@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Upload, Plus, Copy, Repeat, ChevronRight, ArrowLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Upload, Plus, Copy, Repeat, ChevronRight, ArrowLeft, Sparkles } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useReceipts } from '../hooks/useReceipts'
 import { useDrive } from '../hooks/useDrive'
@@ -9,6 +9,7 @@ import { useDriveActions } from '../hooks/useDriveActions'
 import { supabase } from '../lib/supabase'
 import UploadCapture from '../components/UploadCapture'
 import ManualReceiptForm from '../components/ManualReceiptForm'
+import ChatOverlay from '../components/ChatOverlay'
 import { daysAgo, formatAmount } from '../lib/utils'
 
 const ERROR_KEYS = {
@@ -48,13 +49,24 @@ export default function HomePage() {
   const { driveState } = useDrive()
   const { organizeFile } = useDriveActions()
 
+  const location = useLocation()
+
   const [captureMode, setCaptureMode] = useState(null) // 'upload'
   const [createMode, setCreateMode] = useState(null)   // 'blank' | 'pickExisting' | 'recurring'
   const [templateReceipt, setTemplateReceipt] = useState(null)
+  const [chatPrompt, setChatPrompt] = useState(null)   // null = closed, '' = open empty, string = open with prompt
 
   const [dragOver, setDragOver] = useState(false)
   const [dragFiles, setDragFiles] = useState(null)
   const [errors, setErrors] = useState([])
+
+  // Nav Upload tab: navigate('/', { state: { triggerCapture: true } })
+  useEffect(() => {
+    if (location.state?.triggerCapture) {
+      setCaptureMode('upload')
+      navigate('/', { replace: true, state: {} })
+    }
+  }, [location.state?.triggerCapture]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Capture (AI extraction) ----
   const callExtract = useCallback(
@@ -244,6 +256,15 @@ export default function HomePage() {
   const recentReceipts = receipts.slice(0, 5)
 
   // ---- Overlay modes ----
+  if (chatPrompt !== null) {
+    return (
+      <ChatOverlay
+        initialPrompt={chatPrompt || null}
+        onClose={() => setChatPrompt(null)}
+      />
+    )
+  }
+
   if (captureMode === 'upload') {
     return (
       <UploadCapture
@@ -363,6 +384,9 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Assistant section */}
+      <AssistantSection lang={lang} onOpen={setChatPrompt} />
+
       {/* Recent receipts strip */}
       <div>
         <h2 className="text-muted font-semibold mb-3 text-xs uppercase tracking-wide">
@@ -379,6 +403,65 @@ export default function HomePage() {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+function AssistantSection({ lang, onOpen }) {
+  const prompts = lang === 'fr'
+    ? [
+        'Comment fonctionne Récu ?',
+        'Comment Récu peut m\'aider à être plus efficace ?',
+        'Guide-moi pour démarrer étape par étape',
+      ]
+    : [
+        'How does Récu work?',
+        'How can Récu make me more efficient?',
+        'Guide me through getting started',
+      ]
+
+  return (
+    <div>
+      <h2 className="text-xs text-muted uppercase tracking-wide font-medium mb-3">
+        {lang === 'fr' ? 'Assistant' : 'Assistant'}
+      </h2>
+      <div className="bg-surface border border-border rounded-[8px] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-primary/8 to-transparent border-b border-border/60">
+          <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+            <Sparkles size={16} className="text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-[#1A1A18]">Récu Assistant</p>
+            <p className="text-xs text-muted">
+              {lang === 'fr' ? 'Posez vos questions sur Récu' : 'Ask anything about Récu'}
+            </p>
+          </div>
+        </div>
+
+        {/* Suggested prompts */}
+        <div className="divide-y divide-border/60">
+          {prompts.map((p) => (
+            <button
+              key={p}
+              onClick={() => onOpen(p)}
+              className="w-full flex items-center px-4 py-3 gap-3 hover:bg-primary/5 transition-colors text-left active:scale-[0.99]"
+            >
+              <span className="flex-1 text-sm text-[#1A1A18]">{p}</span>
+              <ChevronRight size={14} className="text-muted flex-shrink-0" />
+            </button>
+          ))}
+          <button
+            onClick={() => onOpen('')}
+            className="w-full flex items-center px-4 py-3 gap-3 hover:bg-primary/5 transition-colors text-left active:scale-[0.99]"
+          >
+            <span className="flex-1 text-xs text-muted italic">
+              {lang === 'fr' ? 'Poser une autre question…' : 'Ask your own question…'}
+            </span>
+            <ChevronRight size={14} className="text-muted flex-shrink-0" />
+          </button>
+        </div>
       </div>
     </div>
   )
