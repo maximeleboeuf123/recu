@@ -23,11 +23,13 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   // For confirmed receipts the user already approved whatever taxes are stored — keep them.
   // For pending receipts, AI-calculated taxes count as "not found" so the user decides.
   const isPending = receipt.status !== 'confirmed'
-  const hasTaxesOnReceipt = !isPending || (
+  const hasGstQstExtracted = !isPending || (
     (receipt.gst != null && parseFloat(receipt.gst) !== 0 && !gstCalculated) ||
-    (receipt.qst != null && parseFloat(receipt.qst) !== 0 && !qstCalculated) ||
-    (receipt.hst != null && parseFloat(receipt.hst) !== 0)
+    (receipt.qst != null && parseFloat(receipt.qst) !== 0 && !qstCalculated)
   )
+  const hasHstExtracted = !isPending || (receipt.hst != null && parseFloat(receipt.hst) !== 0)
+  // Show checkboxes only when no taxes were actually on the receipt
+  const showTaxCheckboxes = isPending && !hasGstQstExtracted && !hasHstExtracted
 
   const [fields, setFields] = useState({
     vendor: receipt.vendor || '',
@@ -52,17 +54,19 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   const [dirty, setDirty] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [viewingDoc, setViewingDoc] = useState(false)
-  const [applyTaxes, setApplyTaxes] = useState(false)
+  // null = no taxes applied, 'gstqst' = Quebec taxes, 'hst' = Ontario/Atlantic HST
+  const [taxMode, setTaxMode] = useState(null)
 
   const set = (key, val) => {
     setFields((prev) => ({ ...prev, [key]: val }))
     setDirty(true)
   }
 
-  const handleToggleTaxes = (checked) => {
-    setApplyTaxes(checked)
+  const handleTaxMode = (mode) => {
+    const next = taxMode === mode ? null : mode
+    setTaxMode(next)
     setDirty(true)
-    if (checked) {
+    if (next === 'gstqst') {
       const sub = parseFloat(fields.subtotal)
       let gst = '', qst = ''
       if (!isNaN(sub) && sub > 0) {
@@ -76,9 +80,21 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
           qst = parseFloat((impliedSub * 0.09975).toFixed(2))
         }
       }
-      setFields((prev) => ({ ...prev, gst, qst }))
+      setFields((prev) => ({ ...prev, gst, qst, hst: '' }))
+    } else if (next === 'hst') {
+      const sub = parseFloat(fields.subtotal)
+      let hst = ''
+      if (!isNaN(sub) && sub > 0) {
+        hst = parseFloat((sub * 0.13).toFixed(2))
+      } else {
+        const tot = parseFloat(fields.total)
+        if (!isNaN(tot) && tot > 0) {
+          hst = parseFloat(((tot / 1.13) * 0.13).toFixed(2))
+        }
+      }
+      setFields((prev) => ({ ...prev, hst, gst: '', qst: '' }))
     } else {
-      setFields((prev) => ({ ...prev, gst: '', qst: '' }))
+      setFields((prev) => ({ ...prev, gst: '', qst: '', hst: '' }))
     }
   }
 
@@ -216,9 +232,25 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
         />
         <EditRow label={t('receipt.subtotal')} value={fields.subtotal} onSave={(v) => set('subtotal', v)} type="number" />
 
-        {/* Tax checkbox — only shown when no taxes were extracted */}
-        {!hasTaxesOnReceipt && (
-          <TaxToggleRow checked={applyTaxes} onChange={handleToggleTaxes} lang={lang} />
+        {/* Tax calculation helpers — shown when no taxes were on the receipt */}
+        {showTaxCheckboxes && (
+          <div className="px-4 py-2.5 space-y-2 bg-background/60">
+            <p className="text-[10px] text-muted uppercase tracking-wide font-medium">
+              {lang === 'en' ? 'Calculate taxes' : 'Calculer les taxes'}
+            </p>
+            <TaxCheckboxRow
+              label="TPS/GST 5% + TVQ/QST 9.975%"
+              hint={lang === 'en' ? 'Quebec' : 'Québec'}
+              checked={taxMode === 'gstqst'}
+              onToggle={() => handleTaxMode('gstqst')}
+            />
+            <TaxCheckboxRow
+              label="HST 13%"
+              hint={lang === 'en' ? 'Ontario & Atlantic provinces' : 'Ontario & provinces atlantiques'}
+              checked={taxMode === 'hst'}
+              onToggle={() => handleTaxMode('hst')}
+            />
+          </div>
         )}
 
         <EditRow
@@ -226,7 +258,7 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
           value={fields.gst}
           onSave={(v) => set('gst', v)}
           type="number"
-          badge={gstCalculated ? t('review.calculated') : null}
+          badge={gstCalculated && !showTaxCheckboxes ? t('review.calculated') : null}
           lowConfidence={conf.total === 'low'}
         />
         <EditRow
@@ -234,11 +266,9 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
           value={fields.qst}
           onSave={(v) => set('qst', v)}
           type="number"
-          badge={qstCalculated ? t('review.calculated') : null}
+          badge={qstCalculated && !showTaxCheckboxes ? t('review.calculated') : null}
         />
-        {(fields.hst !== '' && fields.hst != null) && (
-          <EditRow label="HST" value={fields.hst} onSave={(v) => set('hst', v)} type="number" />
-        )}
+        <EditRow label="HST" value={fields.hst} onSave={(v) => set('hst', v)} type="number" />
 
         {/* Currency */}
         <div className="flex items-center justify-between px-4 py-2.5">
@@ -270,10 +300,15 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
         {qstCalculated && (
           <Warning text="TVQ calculée automatiquement (sous-total × 9.975%)" />
         )}
-        {applyTaxes && !hasTaxesOnReceipt && (
+        {taxMode === 'gstqst' && (
           <Warning text={lang === 'en'
-            ? 'Taxes calculated — verify before filing'
-            : 'Taxes calculées — vérifiez avant de déclarer'} />
+            ? 'TPS/GST and TVQ/QST calculated — verify before filing'
+            : 'TPS/TVQ calculées — vérifiez avant de déclarer'} />
+        )}
+        {taxMode === 'hst' && (
+          <Warning text={lang === 'en'
+            ? 'HST calculated at 13% — confirm the rate for your province'
+            : 'HST calculé à 13 % — confirmez le taux selon votre province'} />
         )}
         {conf.invoice_date === 'low' && (
           <Warning text={t('review.low_confidence') + ' — date'} />
@@ -554,25 +589,21 @@ function InfoBadge({ text }) {
   )
 }
 
-function TaxToggleRow({ checked, onChange, lang }) {
+function TaxCheckboxRow({ label, hint, checked, onToggle }) {
   return (
     <button
       type="button"
-      onClick={() => onChange(!checked)}
-      className="w-full flex items-center justify-between px-4 py-2.5 gap-3 hover:bg-background/60 transition-colors text-left"
+      onClick={onToggle}
+      className="flex items-center gap-2.5 w-full text-left"
     >
-      <div className="min-w-0">
-        <p className="text-sm text-muted">
-          {lang === 'en' ? 'Calculate taxes' : 'Calculer les taxes'}
-        </p>
-        <p className="text-[11px] text-muted/60 mt-0.5">
-          TPS 5% + TVQ 9.975%
-        </p>
-      </div>
-      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
         checked ? 'bg-primary border-primary' : 'border-border'
       }`}>
-        {checked && <Check size={11} strokeWidth={3} className="text-white" />}
+        {checked && <Check size={9} strokeWidth={3} className="text-white" />}
+      </div>
+      <div className="min-w-0">
+        <span className="text-sm text-[#1A1A18]">{label}</span>
+        {hint && <span className="text-xs text-muted ml-1.5">{hint}</span>}
       </div>
     </button>
   )
