@@ -1,9 +1,9 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ClipboardCheck, BookOpen, Settings } from 'lucide-react'
+import { Upload, ClipboardCheck, BookOpen, Settings } from 'lucide-react'
 
 const TABS = [
-  { path: '/', iconKey: 'home', Icon: Home },
+  { path: '/', iconKey: 'upload', Icon: Upload },
   { path: '/review', iconKey: 'review', Icon: ClipboardCheck },
   { path: '/ledger', iconKey: 'ledger', Icon: BookOpen },
   { path: '/settings', iconKey: 'settings', Icon: Settings },
