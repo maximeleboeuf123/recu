@@ -7,7 +7,10 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(git commit -m 'fix: safe area insets on CameraCapture — Terminer button now reachable *)"
+      "Bash(git commit -m 'fix: safe area insets on CameraCapture — Terminer button now reachable *)",
+      "Bash(git commit *)",
+      "Bash(node -e \"require\\('xlsx'\\); console.log\\('ok'\\)\")",
+      "Bash(node -e \"import\\('xlsx'\\).then\\(\\(\\)=>console.log\\('ok'\\)\\).catch\\(e=>console.log\\('fail',e.message\\)\\)\")"
     ]
   }
 }

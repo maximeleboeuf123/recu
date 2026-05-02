@@ -25,8 +25,10 @@ export function DimensionsProvider({ children }) {
       setLoading(false)
       return
     }
-    const accs = (data || []).filter((d) => d.type === 'account')
-    const cats = (data || []).filter((d) => d.type === 'category')
+
+    const allData = data || []
+    const accs = allData.filter((d) => d.type === 'account')
+    const cats = allData.filter((d) => d.type === 'category')
     setAccountsWithCategories(
       accs.map((a) => ({
         id: a.id,
@@ -35,7 +37,24 @@ export function DimensionsProvider({ children }) {
       }))
     )
     setLoading(false)
-  }, [userId])
+
+    // First login: if no accounts exist, create a default one
+    if (accs.length === 0) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('language')
+        .eq('id', userId)
+        .single()
+      const defaultName = userData?.language === 'en' ? 'Personal' : 'Personnel'
+      const { error: insertError } = await supabase
+        .from('dimensions')
+        .insert({ user_id: userId, type: 'account', name: defaultName })
+      if (!insertError) {
+        // Re-load to get the real ID
+        load()
+      }
+    }
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load() }, [load])
 
@@ -60,8 +79,21 @@ export function DimensionsProvider({ children }) {
     setAccountsWithCategories((prev) =>
       prev.map((a) => (a.id === tid ? { ...a, id: data.id } : a))
     )
+
+    // Fire-and-forget: create Drive folder for this account
+    if (session?.access_token) {
+      fetch('/api/drive/sync-folder', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ dimensionId: data.id }),
+      }).catch(() => {})
+    }
+
     return true
-  }, [userId])
+  }, [userId, session])
 
   // --- removeAccount: optimistic, restore on failure, cascade-clear receipts ---
   const removeAccount = useCallback(async (id) => {
@@ -199,8 +231,21 @@ export function DimensionsProvider({ children }) {
         )
       )
     }
+
+    // Fire-and-forget: rename Drive folder for this account
+    if (session?.access_token) {
+      fetch('/api/drive/sync-folder', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ dimensionId: id, newName: trimmed }),
+      }).catch(() => {})
+    }
+
     return true
-  }, [userId, accountsWithCategories])
+  }, [userId, accountsWithCategories, session])
 
   // --- renameCategory: update dimension + cascade to receipts labels.category ---
   const renameCategory = useCallback(async (id, newName) => {
@@ -264,6 +309,18 @@ export function DimensionsProvider({ children }) {
       accountId = acc.id
       isNew = true
       setAccountsWithCategories((prev) => [...prev, { id: accountId, name: accountName, categories: [] }])
+
+      // Fire-and-forget: create Drive folder for the new account
+      if (session?.access_token) {
+        fetch('/api/drive/sync-folder', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ dimensionId: accountId }),
+        }).catch(() => {})
+      }
     }
 
     const targetAcc = accountsWithCategories.find((a) => a.id === accountId)
@@ -292,7 +349,7 @@ export function DimensionsProvider({ children }) {
     }
 
     return true
-  }, [userId, accountsWithCategories])
+  }, [userId, accountsWithCategories, session])
 
   return (
     <DimensionsContext.Provider value={{

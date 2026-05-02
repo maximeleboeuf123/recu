@@ -35,6 +35,8 @@ export default function DimensionsPage() {
   const lang = i18n.language === 'en' ? 'en' : 'fr'
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500) }
 
+  const pageTitle = lang === 'en' ? 'Accounts & Categories' : 'Comptes et catégories'
+
   const handleCreate = async ({ accountName, categories }) => {
     const ok = await applyPreset(null, accountName.trim(), categories)
     if (ok) {
@@ -70,7 +72,7 @@ export default function DimensionsPage() {
         <button onClick={() => navigate(-1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-border/30 transition-colors">
           <ArrowLeft size={18} className="text-muted" />
         </button>
-        <h1 className="text-xl font-bold text-[#1A1A18]">{t('settings.dimensions')}</h1>
+        <h1 className="text-xl font-bold text-[#1A1A18]">{pageTitle}</h1>
       </div>
 
       {/* Preset packs */}

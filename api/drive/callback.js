@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getServiceClient } from '../lib/auth.js'
-import { createDriveFolder } from '../lib/driveClient.js'
+import { createDriveFolder, findOrCreateFolder } from '../lib/driveClient.js'
 
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token'
 
@@ -76,12 +76,34 @@ export default async function handler(req, res) {
       const root = await createDriveFolder(tokens.access_token, 'Récu', null)
       const inboxName = lang === 'en' ? '_Receipts' : '_Factures'
       const inbox = await createDriveFolder(tokens.access_token, inboxName, root.id)
-      await createDriveFolder(tokens.access_token, '_Exports', root.id)
+      const exportsFolder = await createDriveFolder(tokens.access_token, '_Exports', root.id)
+      const toProcess = await createDriveFolder(tokens.access_token, '_to_process', root.id)
 
       await serviceClient.from('users').update({
         drive_folder_id: root.id,
         drive_inbox_id: inbox.id,
+        drive_exports_id: exportsFolder.id,
+        drive_to_process_id: toProcess.id,
       }).eq('id', userId)
+
+      // Create account folders for any existing account dimensions
+      const { data: accounts } = await serviceClient
+        .from('dimensions')
+        .select('id, name')
+        .eq('user_id', userId)
+        .eq('type', 'account')
+        .is('drive_folder_id', null)
+
+      if (accounts?.length) {
+        await Promise.all(accounts.map(async (acc) => {
+          try {
+            const f = await findOrCreateFolder(tokens.access_token, acc.name, inbox.id)
+            await serviceClient.from('dimensions').update({ drive_folder_id: f.id }).eq('id', acc.id)
+          } catch (e) {
+            console.error('account folder creation failed for', acc.name, e.message)
+          }
+        }))
+      }
     } catch (e) {
       console.error('Folder creation failed:', e.message)
       return res.redirect(`${appOrigin}/settings?drive=error`)

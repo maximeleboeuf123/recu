@@ -13,7 +13,7 @@ export default function LedgerPage() {
   const { t, i18n } = useTranslation()
   const { receipts, loading, updateReceipt, deleteReceipt, confirmReceipt, duplicateReceipt } = useReceipts()
   const { savePattern, applyPatternToPending } = usePatterns()
-  const { renameToFinal, deleteFromDrive } = useDriveActions()
+  const { organizeFile, deleteFromDrive } = useDriveActions()
   const { filters, setField, setSearch, resetFilters, activeCount } = useLedgerFilters()
   const { accountsWithCategories } = useDimensions()
 
@@ -106,7 +106,7 @@ export default function LedgerPage() {
       : await updateReceipt(id, data, original)
     if (!ok) return showToast(t('common.error'))
 
-    if (isApproval && original.drive_file_id) renameToFinal(original.drive_file_id)
+    if (original?.drive_file_id) organizeFile(original.id)
 
     if (data.vendor && data.labels) {
       const dimChanged =

@@ -13,7 +13,7 @@ export default function ReceiptPage() {
   const navigate = useNavigate()
   const { receipts, loading, updateReceipt, deleteReceipt, confirmReceipt } = useReceipts()
   const { savePattern, applyPatternToPending } = usePatterns()
-  const { renameToFinal, deleteFromDrive } = useDriveActions()
+  const { organizeFile, deleteFromDrive } = useDriveActions()
   const [toast, setToast] = useState(null)
 
   const receipt = receipts.find((r) => r.id === id)
@@ -31,7 +31,7 @@ export default function ReceiptPage() {
       : await updateReceipt(receiptId, data, original)
     if (!ok) return showToast(t('common.error'))
 
-    if (isApproval && original.drive_file_id) renameToFinal(original.drive_file_id)
+    if (original?.drive_file_id) organizeFile(original.id)
 
     if (!isApproval && data.vendor && data.labels) {
       const dimChanged =

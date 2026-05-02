@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const user = session?.user
   const email = user?.email ?? ''
   const avatarUrl = user?.user_metadata?.avatar_url
+  const lang = i18n.language === 'en' ? 'en' : 'fr'
 
   // Handle OAuth callback redirect (?drive=connected or ?drive=error)
   useEffect(() => {
@@ -34,6 +35,8 @@ export default function SettingsPage() {
     setToast(msg)
     setTimeout(() => setToast(null), 3500)
   }
+
+  const dimensionsLabel = lang === 'en' ? 'Accounts & Categories' : 'Comptes et catégories'
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
@@ -59,13 +62,13 @@ export default function SettingsPage() {
         <Link to="/guide" className="flex items-center px-4 py-3.5 gap-3 hover:bg-background transition-colors">
           <BookOpen size={17} className="text-muted flex-shrink-0" />
           <span className="flex-1 text-sm font-medium text-[#1A1A18]">
-            {i18n.language === 'en' ? 'How it works' : 'Comment ça marche'}
+            {lang === 'en' ? 'How it works' : 'Comment ça marche'}
           </span>
           <ChevronRight size={15} className="text-muted" />
         </Link>
         <Link to="/dimensions" className="flex items-center px-4 py-3.5 gap-3 hover:bg-background transition-colors">
           <Layers size={17} className="text-muted flex-shrink-0" />
-          <span className="flex-1 text-sm font-medium text-[#1A1A18]">{t('settings.dimensions')}</span>
+          <span className="flex-1 text-sm font-medium text-[#1A1A18]">{dimensionsLabel}</span>
           <ChevronRight size={15} className="text-muted" />
         </Link>
         <Row icon={RefreshCw} label={t('settings.recurring')} />

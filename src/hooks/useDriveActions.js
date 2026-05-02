@@ -16,7 +16,13 @@ export function useDriveActions() {
   }
 
   return {
+    // Legacy — kept for backward compatibility
     renameToFinal: (fileId) => call('/api/drive/rename', { fileId }),
     deleteFromDrive: (fileId) => call('/api/drive/delete-file', { fileId }),
+    // New: rename + move to correct Account/Year/Category folder
+    organizeFile: (receiptId) => call('/api/drive/organize', { receiptId }),
+    // New: create or rename Drive folder for an account dimension
+    syncDimensionFolder: (dimensionId, newName) =>
+      call('/api/drive/sync-folder', { dimensionId, ...(newName ? { newName } : {}) }),
   }
 }
