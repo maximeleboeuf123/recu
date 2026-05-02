@@ -16,14 +16,28 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   const scores = receipt.confidence_scores || {}
   const conf = receipt.extracted_raw?.confidence || {}
 
+  // Computed before useState so they can inform initial field values
+  const gstCalculated = scores.gst_source === 'calculated'
+  const qstCalculated = scores.qst_source === 'calculated'
+
+  // For confirmed receipts the user already approved whatever taxes are stored — keep them.
+  // For pending receipts, AI-calculated taxes count as "not found" so the user decides.
+  const isPending = receipt.status !== 'confirmed'
+  const hasTaxesOnReceipt = !isPending || (
+    (receipt.gst != null && parseFloat(receipt.gst) !== 0 && !gstCalculated) ||
+    (receipt.qst != null && parseFloat(receipt.qst) !== 0 && !qstCalculated) ||
+    (receipt.hst != null && parseFloat(receipt.hst) !== 0)
+  )
+
   const [fields, setFields] = useState({
     vendor: receipt.vendor || '',
     invoice_date: receipt.invoice_date || '',
     invoice_number: receipt.invoice_number || '',
     description: receipt.description || '',
     subtotal: receipt.subtotal ?? '',
-    gst: receipt.gst ?? '',
-    qst: receipt.qst ?? '',
+    // Don't pre-fill AI-calculated taxes for pending receipts — the checkbox decides
+    gst: (isPending && gstCalculated) ? '' : (receipt.gst ?? ''),
+    qst: (isPending && qstCalculated) ? '' : (receipt.qst ?? ''),
     hst: receipt.hst ?? '',
     total: receipt.total ?? '',
     currency: receipt.currency || 'CAD',
@@ -39,11 +53,6 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [viewingDoc, setViewingDoc] = useState(false)
   const [applyTaxes, setApplyTaxes] = useState(false)
-
-  // Taxes are considered "found" if any tax field was extracted with a non-zero value
-  const hasTaxesOnReceipt = [receipt.gst, receipt.qst, receipt.hst].some(
-    (v) => v != null && v !== '' && parseFloat(v) !== 0,
-  )
 
   const set = (key, val) => {
     setFields((prev) => ({ ...prev, [key]: val }))
@@ -111,9 +120,6 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
     if (!dirty) return onClose?.()
     onConfirm?.(receipt.id, buildData(), null, patternPrompt)
   }
-
-  const gstCalculated = scores.gst_source === 'calculated'
-  const qstCalculated = scores.qst_source === 'calculated'
 
   return (
     <div className="bg-surface border border-border rounded-[8px] overflow-hidden">
