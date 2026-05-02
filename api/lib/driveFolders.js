@@ -141,7 +141,7 @@ export async function moveFile(accessToken, fileId, newFolderId) {
   const currentParents = (meta.parents || []).join(',')
 
   const patchRes = await fetch(
-    `${DRIVE_API}/files/${fileId}?addParents=${encodeURIComponent(newFolderId)}&removeParents=${encodeURIComponent(currentParents)}&fields=id,parents`,
+    `${DRIVE_API}/files/${fileId}?addParents=${newFolderId}&removeParents=${currentParents}&fields=id,parents`,
     {
       method: 'PATCH',
       headers: {
