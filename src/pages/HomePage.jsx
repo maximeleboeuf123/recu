@@ -192,6 +192,7 @@ export default function HomePage() {
         refresh()
         setCreateMode(null)
         setTemplateReceipt(null)
+        navigate('/ledger')
 
         // Simple toast via errors array (positive message)
         const count = rows.length

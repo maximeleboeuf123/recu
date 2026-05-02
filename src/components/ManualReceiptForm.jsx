@@ -37,10 +37,10 @@ export default function ManualReceiptForm({ lang, initialValues, isRecurring, dr
   const { accountsWithCategories } = useDimensions()
 
   const [fields, setFields] = useState({
+    name: initialValues.description || '',
     vendor: initialValues.vendor || '',
     invoice_date: !isRecurring ? (initialValues.invoice_date || today()) : '',
     invoice_number: initialValues.invoice_number || '',
-    description: initialValues.description || '',
     subtotal: initialValues.subtotal ?? '',
     gst: '',
     qst: '',
@@ -119,8 +119,9 @@ export default function ManualReceiptForm({ lang, initialValues, isRecurring, dr
   const categoryOptions = selectedAccount?.categories || []
 
   const buildReceiptData = () => {
-    const { label_category, label_property, ...rest } = fields
+    const { label_category, label_property, name, ...rest } = fields
     const data = { ...rest }
+    data.description = name || null
     for (const k of ['subtotal', 'gst', 'qst', 'hst', 'total']) {
       data[k] = (data[k] !== '' && data[k] != null) ? parseFloat(data[k]) : null
     }
@@ -205,12 +206,12 @@ export default function ManualReceiptForm({ lang, initialValues, isRecurring, dr
             />
           </div>
           <div className={rowClass}>
-            <span className={labelClass}>{lang === 'en' ? 'Description' : 'Description'}</span>
+            <span className={labelClass}>{lang === 'en' ? 'Name' : 'Nom'}</span>
             <input
               className={inputClass}
               placeholder="—"
-              value={fields.description}
-              onChange={(e) => setField('description', e.target.value)}
+              value={fields.name}
+              onChange={(e) => setField('name', e.target.value)}
             />
           </div>
         </div>
