@@ -170,8 +170,34 @@ export function ReceiptsProvider({ children }) {
     }).select().single()
     if (error) { console.error('duplicateReceipt:', error.message); return false }
     setReceipts((prev) => [newRow, ...prev])
+
+    // Copy the Drive file if the original has one
+    if (receipt.drive_file_id && session?.access_token) {
+      fetch('/api/drive/copy-file', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sourceFileId: receipt.drive_file_id, targetReceiptId: newRow.id }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.fileId) {
+            setReceipts((prev) =>
+              prev.map((r) =>
+                r.id === newRow.id
+                  ? { ...r, drive_file_id: data.fileId, drive_url: data.fileUrl }
+                  : r
+              )
+            )
+          }
+        })
+        .catch(() => {})
+    }
+
     return true
-  }, [])
+  }, [session])
 
   const createRecurringEntry = useCallback(
     async (_receiptId, recurringData, receiptData) => {

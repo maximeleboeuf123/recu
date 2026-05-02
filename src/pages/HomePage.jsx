@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useReceipts } from '../hooks/useReceipts'
 import { useDrive } from '../hooks/useDrive'
+import { useDriveActions } from '../hooks/useDriveActions'
 import { supabase } from '../lib/supabase'
 import CameraCapture from '../components/CameraCapture'
 import UploadCapture from '../components/UploadCapture'
@@ -46,6 +47,7 @@ export default function HomePage() {
   const { session } = useAuth()
   const { receipts, pendingCount, refresh } = useReceipts()
   const { driveState } = useDrive()
+  const { organizeFile } = useDriveActions()
 
   const [captureMode, setCaptureMode] = useState(null) // 'camera' | 'upload'
   const [createMode, setCreateMode] = useState(null)   // 'blank' | 'pickExisting' | 'recurring'
@@ -159,7 +161,7 @@ export default function HomePage() {
           ? generateDates(schedule.start_date, schedule.end_date, schedule.unit, schedule.interval).slice(0, 120)
           : [receiptData.invoice_date || today()]
 
-        // Build rows
+        // Build rows (only first entry gets the Drive file for recurring)
         const rows = dates.map((date, i) => ({
           user_id: session.user.id,
           status: 'confirmed',
@@ -177,8 +179,9 @@ export default function HomePage() {
           currency: receiptData.currency || 'CAD',
           vendor_gst_number: receiptData.vendor_gst_number || null,
           vendor_qst_number: receiptData.vendor_qst_number || null,
-          drive_file_id: driveFileId || null,
-          drive_url: driveUrl || null,
+          drive_file_id: i === 0 ? (driveFileId || null) : null,
+          drive_url: i === 0 ? (driveUrl || null) : null,
+          filename: i === 0 ? (photoFile?.name || null) : null,
           labels: receiptData.labels || {},
           source: 'manual',
           confidence_scores: {},
@@ -186,14 +189,21 @@ export default function HomePage() {
           edit_history: [],
         }))
 
-        const { error } = await supabase.from('receipts').insert(rows)
+        const { data: inserted, error } = await supabase.from('receipts').insert(rows).select('id, drive_file_id')
         if (error) {
           console.error('Manual insert error:', error)
           setErrors((prev) => [...prev, t('common.error')])
           return false
         }
 
-        refresh()
+        // Move file to correct folder after insert (now we have the receipt ID)
+        if (inserted) {
+          for (const r of inserted) {
+            if (r.drive_file_id) organizeFile(r.id)
+          }
+        }
+
+        await refresh()
         setCreateMode(null)
         setTemplateReceipt(null)
         navigate('/ledger')
@@ -214,7 +224,7 @@ export default function HomePage() {
         return false
       }
     },
-    [createMode, driveState, session, refresh, t, lang],
+    [createMode, driveState, session, refresh, organizeFile, t, lang],
   )
 
   // ---- Drag & drop ----

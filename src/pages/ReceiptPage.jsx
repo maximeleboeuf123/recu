@@ -13,7 +13,7 @@ export default function ReceiptPage() {
   const navigate = useNavigate()
   const { receipts, loading, updateReceipt, deleteReceipt, confirmReceipt } = useReceipts()
   const { savePattern, applyPatternToPending } = usePatterns()
-  const { organizeFile, deleteFromDrive } = useDriveActions()
+  const { organizeFile, deleteFromDrive, uploadFile } = useDriveActions()
   const [toast, setToast] = useState(null)
 
   const receipt = receipts.find((r) => r.id === id)
@@ -43,6 +43,16 @@ export default function ReceiptPage() {
       }
     }
     showToast(isApproval ? t('review.confirm_success', { count: 1 }) : t('common.save'))
+  }
+
+  const handleReplaceFile = async (file) => {
+    const uploaded = await uploadFile(file)
+    if (!uploaded?.fileId) return showToast(t('common.error'))
+    const oldFileId = receipt?.drive_file_id
+    await updateReceipt(receipt.id, { drive_file_id: uploaded.fileId, drive_url: uploaded.fileUrl, filename: file.name }, receipt)
+    if (oldFileId) deleteFromDrive(oldFileId)
+    organizeFile(receipt.id)
+    showToast(t('common.save'))
   }
 
   const handleDelete = async (receiptId) => {
@@ -92,6 +102,7 @@ export default function ReceiptPage() {
         onConfirm={handleSave}
         onClose={() => navigate(-1)}
         onDelete={handleDelete}
+        onReplaceFile={handleReplaceFile}
       />
 
       {toast && (

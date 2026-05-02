@@ -2,14 +2,14 @@ import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Pencil, AlertTriangle, Info, Plus, ChevronDown, FileText, X, Settings, Check } from 'lucide-react'
+import { Pencil, AlertTriangle, Info, Plus, ChevronDown, FileText, X, Settings, Check, Paperclip } from 'lucide-react'
 import RecurringFields from './RecurringFields'
 import { useDimensions } from '../context/DimensionsContext'
 
 const CURRENCIES = ['CAD', 'USD', 'EUR', 'GBP', 'CHF', 'MXN']
 
 // mode: 'review' (confirm/skip) | 'ledger' (save/cancel)
-export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip, onDelete, onClose }) {
+export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip, onDelete, onClose, onReplaceFile }) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language === 'en' ? 'en' : 'fr'
   const { accountsWithCategories } = useDimensions()
@@ -56,6 +56,7 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   const [viewingDoc, setViewingDoc] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const nameInputRef = useRef(null)
+  const fileInputRef = useRef(null)
   // null = no taxes applied, 'gstqst' = Quebec taxes, 'hst' = Ontario/Atlantic HST
   const [taxMode, setTaxMode] = useState(null)
 
@@ -166,17 +167,41 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
       )}
       {/* Header */}
       <div className="flex items-start gap-3 p-4 border-b border-border bg-background/40">
-        <button
-          onClick={() => receipt.drive_file_id && setViewingDoc(true)}
-          className={`w-12 h-16 flex-shrink-0 rounded-[4px] flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
-            receipt.drive_file_id
-              ? 'bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer'
-              : 'bg-border/40 text-muted cursor-default'
-          }`}
-        >
-          <FileText size={18} strokeWidth={1.5} />
-          <span>{receipt.page_count || 1}p</span>
-        </button>
+        <div className="relative flex-shrink-0 w-12">
+          <button
+            onClick={() => receipt.drive_file_id && setViewingDoc(true)}
+            className={`w-12 h-16 rounded-[4px] flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
+              receipt.drive_file_id
+                ? 'bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer'
+                : 'bg-border/40 text-muted cursor-default'
+            }`}
+          >
+            <FileText size={18} strokeWidth={1.5} />
+            <span>{receipt.page_count || 1}p</span>
+          </button>
+          {onReplaceFile && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) onReplaceFile(f)
+                  e.target.value = ''
+                }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                title={receipt.drive_file_id ? 'Replace file' : 'Attach file'}
+                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-background border border-border flex items-center justify-center hover:bg-primary/10 hover:border-primary transition-colors"
+              >
+                <Paperclip size={9} className="text-muted" />
+              </button>
+            </>
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           {editingName ? (
             <input

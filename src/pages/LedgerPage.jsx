@@ -13,7 +13,7 @@ export default function LedgerPage() {
   const { t, i18n } = useTranslation()
   const { receipts, loading, updateReceipt, deleteReceipt, confirmReceipt, duplicateReceipt } = useReceipts()
   const { savePattern, applyPatternToPending } = usePatterns()
-  const { organizeFile, deleteFromDrive } = useDriveActions()
+  const { organizeFile, deleteFromDrive, uploadFile } = useDriveActions()
   const { filters, setField, setSearch, resetFilters, activeCount } = useLedgerFilters()
   const { accountsWithCategories } = useDimensions()
 
@@ -126,6 +126,17 @@ export default function LedgerPage() {
     const ok = await duplicateReceipt(receipt)
     if (!ok) return showToast(t('common.error'))
     showToast(lang === 'en' ? 'Receipt duplicated' : 'Reçu dupliqué')
+  }
+
+  const handleReplaceFile = async (receiptId, file) => {
+    const receipt = receipts.find((r) => r.id === receiptId)
+    const uploaded = await uploadFile(file)
+    if (!uploaded?.fileId) return showToast(t('common.error'))
+    const oldFileId = receipt?.drive_file_id
+    await updateReceipt(receiptId, { drive_file_id: uploaded.fileId, drive_url: uploaded.fileUrl, filename: file.name }, receipt)
+    if (oldFileId) deleteFromDrive(oldFileId)
+    organizeFile(receiptId)
+    showToast(lang === 'en' ? 'File replaced' : 'Fichier remplacé')
   }
 
   // Category options filtered by selected account
@@ -340,6 +351,7 @@ export default function LedgerPage() {
                 onConfirm={handleSave}
                 onClose={() => setExpandedId(null)}
                 onDelete={handleDelete}
+                onReplaceFile={(file) => handleReplaceFile(r.id, file)}
               />
             ) : (
               <LedgerRow key={r.id} receipt={r} onClick={() => setExpandedId(r.id)} onDuplicate={handleDuplicate} />
