@@ -48,30 +48,125 @@ function generateCSV(receipts) {
   return [header, ...rows].join('\r\n')
 }
 
-function generateXLSX(receipts) {
+function r2(n) {
+  return Math.round(n * 100) / 100
+}
+
+function applyNumFmt(ws, numColIndices, startRow) {
+  if (!ws['!ref']) return
+  const range = XLSX.utils.decode_range(ws['!ref'])
+  for (let row = startRow; row <= range.e.r; row++) {
+    for (const col of numColIndices) {
+      const ref = XLSX.utils.encode_cell({ r: row, c: col })
+      if (ws[ref] && typeof ws[ref].v === 'number') ws[ref].z = '#,##0.00'
+    }
+  }
+}
+
+function buildTransactionsSheet(receipts) {
   const rowData = receipts.map((r) =>
     Object.fromEntries(COLUMNS.map((c) => [c.header, c.get(r)]))
   )
   const ws = XLSX.utils.json_to_sheet(rowData, { header: COLUMNS.map((c) => c.header) })
-
-  // Column widths + freeze header row
   ws['!cols'] = COLUMNS.map((c) => ({ wch: c.width }))
   ws['!freeze'] = { xSplit: 0, ySplit: 1 }
-
-  // Number format on amount cells
   const numColIndices = COLUMNS.map((c, i) => (c.type === 'number' ? i : -1)).filter((i) => i >= 0)
-  if (ws['!ref']) {
-    const range = XLSX.utils.decode_range(ws['!ref'])
-    for (let row = range.s.r + 1; row <= range.e.r; row++) {
-      for (const col of numColIndices) {
-        const ref = XLSX.utils.encode_cell({ r: row, c: col })
-        if (ws[ref]) ws[ref].z = '#,##0.00'
-      }
-    }
+  applyNumFmt(ws, numColIndices, 1)
+  return ws
+}
+
+function buildSummarySheet(receipts, period) {
+  // Aggregate: account → category → totals
+  const groups = {}
+  for (const r of receipts) {
+    const acc = r.labels?.property || ''
+    const cat = r.labels?.category || ''
+    if (!groups[acc]) groups[acc] = {}
+    if (!groups[acc][cat]) groups[acc][cat] = { count: 0, subtotal: 0, gst: 0, qst: 0, hst: 0, total: 0 }
+    const g = groups[acc][cat]
+    g.count++
+    g.subtotal = r2(g.subtotal + (r.subtotal ?? 0))
+    g.gst     = r2(g.gst     + (r.gst     ?? 0))
+    g.qst     = r2(g.qst     + (r.qst     ?? 0))
+    g.hst     = r2(g.hst     + (r.hst     ?? 0))
+    g.total   = r2(g.total   + (r.total   ?? 0))
   }
 
+  const HDR = ['Account', 'Category', '# Receipts', 'Subtotal', 'TPS/GST', 'TVQ/QST', 'HST', 'Total (CAD)']
+  const NUM_COLS = [3, 4, 5, 6, 7]
+  const aoa = []
+
+  // Metadata header
+  const periodStr = period || (() => {
+    const dates = receipts.map((r) => r.invoice_date).filter(Boolean).sort()
+    return dates.length ? `${dates[0]} to ${dates[dates.length - 1]}` : ''
+  })()
+  aoa.push(['Period', periodStr, '', '', '', '', '', ''])
+  aoa.push(['Generated', new Date().toISOString().slice(0, 10), '', '', '', '', '', ''])
+  aoa.push([]) // blank
+  aoa.push(HDR)  // row index 3 → freeze below this
+
+  const grand = { count: 0, subtotal: 0, gst: 0, qst: 0, hst: 0, total: 0 }
+
+  const accNames = Object.keys(groups).sort((a, b) => {
+    if (!a && b) return 1
+    if (a && !b) return -1
+    return a.localeCompare(b)
+  })
+
+  for (const acc of accNames) {
+    const accLabel = acc || '(No Account)'
+    const catMap = groups[acc]
+    const catNames = Object.keys(catMap).sort((a, b) => {
+      if (!a && b) return 1
+      if (a && !b) return -1
+      return a.localeCompare(b)
+    })
+
+    const accTot = { count: 0, subtotal: 0, gst: 0, qst: 0, hst: 0, total: 0 }
+
+    for (const cat of catNames) {
+      const g = catMap[cat]
+      aoa.push([accLabel, cat || '(No Category)', g.count, g.subtotal, g.gst, g.qst, g.hst, g.total])
+      accTot.count    += g.count
+      accTot.subtotal  = r2(accTot.subtotal + g.subtotal)
+      accTot.gst       = r2(accTot.gst      + g.gst)
+      accTot.qst       = r2(accTot.qst      + g.qst)
+      accTot.hst       = r2(accTot.hst      + g.hst)
+      accTot.total     = r2(accTot.total    + g.total)
+    }
+
+    // Account subtotal — only add if more than one category row
+    if (catNames.length > 1) {
+      aoa.push([`${accLabel} — TOTAL`, '', accTot.count, accTot.subtotal, accTot.gst, accTot.qst, accTot.hst, accTot.total])
+    }
+    aoa.push([]) // blank separator between accounts
+
+    grand.count    += accTot.count
+    grand.subtotal  = r2(grand.subtotal + accTot.subtotal)
+    grand.gst       = r2(grand.gst      + accTot.gst)
+    grand.qst       = r2(grand.qst      + accTot.qst)
+    grand.hst       = r2(grand.hst      + accTot.hst)
+    grand.total     = r2(grand.total    + accTot.total)
+  }
+
+  // Grand total row
+  aoa.push(['GRAND TOTAL', '', grand.count, grand.subtotal, grand.gst, grand.qst, grand.hst, grand.total])
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa)
+  ws['!cols'] = [
+    { wch: 26 }, { wch: 22 }, { wch: 12 },
+    { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 },
+  ]
+  ws['!freeze'] = { xSplit: 0, ySplit: 4 } // freeze after metadata + blank + header
+  applyNumFmt(ws, NUM_COLS, 4) // data starts at row index 4
+  return ws
+}
+
+function generateXLSX(receipts, period) {
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Receipts')
+  XLSX.utils.book_append_sheet(wb, buildTransactionsSheet(receipts), 'Transactions')
+  XLSX.utils.book_append_sheet(wb, buildSummarySheet(receipts, period), 'Summary')
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
 }
 
@@ -84,7 +179,7 @@ export default async function handler(req, res) {
   let body
   try { body = await parseBody(req) } catch { return res.status(400).json({ error: 'bad_request' }) }
 
-  const { filename, format, receipts } = body || {}
+  const { filename, format, receipts, period } = body || {}
   if (!filename?.trim() || !['csv', 'xlsx'].includes(format) || !Array.isArray(receipts)) {
     return res.status(400).json({ error: 'missing_fields' })
   }
@@ -116,7 +211,7 @@ export default async function handler(req, res) {
     // Generate file buffer
     let fileBuffer, mimeType
     if (format === 'xlsx') {
-      fileBuffer = generateXLSX(receipts)
+      fileBuffer = generateXLSX(receipts, period)
       mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     } else {
       const csv = generateCSV(receipts)

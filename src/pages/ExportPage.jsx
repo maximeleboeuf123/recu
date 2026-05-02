@@ -40,7 +40,7 @@ export default function ExportPage() {
   const { driveState, loading: driveLoading } = useDrive()
   const { filters, activeCount } = useLedgerFilters()
 
-  const [scope, setScope] = useState('all')
+  const [scope, setScope] = useState(() => activeCount > 0 ? 'filtered' : 'all')
   const [format, setFormat] = useState('xlsx')
   const [filename, setFilename] = useState(`export_${today()}`)
   const [exporting, setExporting] = useState(false)
@@ -57,6 +57,12 @@ export default function ExportPage() {
 
   const exportList = scope === 'filtered' && activeCount > 0 ? filteredReceipts : allReceipts
 
+  const periodLabel = useMemo(() => {
+    const dates = exportList.map((r) => r.invoice_date).filter(Boolean).sort()
+    if (!dates.length) return ''
+    return dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} to ${dates[dates.length - 1]}`
+  }, [exportList])
+
   const handleExport = async () => {
     if (!exportList.length || !filename.trim()) return
     setExporting(true)
@@ -69,7 +75,7 @@ export default function ExportPage() {
           Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ filename: filename.trim(), format, receipts: exportList }),
+        body: JSON.stringify({ filename: filename.trim(), format, receipts: exportList, period: periodLabel }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'export_failed')
@@ -156,7 +162,7 @@ export default function ExportPage() {
                 onClick={() => setFormat('xlsx')}
                 icon={FileSpreadsheet}
                 label="XLSX"
-                description={lang === 'en' ? 'Spreadsheet with frozen header, column widths & number formatting' : 'Tableau avec en-tête figé, colonnes et format numérique'}
+                description={lang === 'en' ? '2 tabs: Transactions (all columns) + Summary by account & category' : '2 onglets : Transactions (toutes colonnes) + Résumé par compte & catégorie'}
               />
               <FormatCard
                 selected={format === 'csv'}
