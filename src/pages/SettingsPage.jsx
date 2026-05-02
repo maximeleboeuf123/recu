@@ -195,6 +195,11 @@ function DriveSection({ session, driveState, loading, onRefresh, showToast }) {
         >
           {connecting ? t('drive.connecting') : t('drive.connect')}
         </button>
+        <p className="text-xs text-muted leading-relaxed">
+          {lang === 'en'
+            ? 'Récu only accesses files it creates. It cannot see, read, or modify any other file in your Google Drive.'
+            : 'Récu accède uniquement aux fichiers qu\'il crée. Il ne peut pas voir, lire ni modifier les autres fichiers de votre Google Drive.'}
+        </p>
       </div>
     )
   }
@@ -218,6 +223,11 @@ function DriveSection({ session, driveState, loading, onRefresh, showToast }) {
         <p>{t('drive.files_saved', { count: driveState.fileCount })}</p>
         {lastSyncText && <p>{t('drive.last_sync', { time: lastSyncText })}</p>}
       </div>
+
+      <p className="text-xs text-muted pl-8 leading-relaxed">
+        {lang === 'en'
+          ? 'Récu only accesses files it creates. It cannot see, read, or modify any other file in your Google Drive.'
+          : 'Récu accède uniquement aux fichiers qu\'il crée. Il ne peut pas voir, lire ni modifier les autres fichiers de votre Google Drive.'}</p>
 
       <div className="flex gap-2">
         <a
