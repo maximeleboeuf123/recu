@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Layers, RefreshCw, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen } from 'lucide-react'
+import { Layers, RefreshCw, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useDrive } from '../hooks/useDrive'
 import LanguageToggle from '../components/LanguageToggle'
@@ -115,8 +115,10 @@ export default function SettingsPage() {
 
 function DriveSection({ session, driveState, loading, onRefresh, showToast }) {
   const { t, i18n } = useTranslation()
+  const lang = i18n.language === 'en' ? 'en' : 'fr'
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   const handleConnect = async () => {
     setConnecting(true)
@@ -146,6 +148,24 @@ function DriveSection({ session, driveState, loading, onRefresh, showToast }) {
       showToast(t('common.error'))
     } finally {
       setDisconnecting(false)
+    }
+  }
+
+  const handleSyncFolders = async () => {
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/drive/sync-dimensions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const data = await res.json()
+      showToast(lang === 'en'
+        ? `Folders synced (${data.created ?? 0} created)`
+        : `Dossiers synchronisés (${data.created ?? 0} créés)`)
+    } catch {
+      showToast(t('common.error'))
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -210,9 +230,17 @@ function DriveSection({ session, driveState, loading, onRefresh, showToast }) {
           {t('drive.open_in_drive')}
         </a>
         <button
+          onClick={handleSyncFolders}
+          disabled={syncing}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform disabled:opacity-50"
+          title={lang === 'en' ? 'Sync account & category folders' : 'Synchroniser les dossiers'}
+        >
+          <FolderSync size={14} className={syncing ? 'animate-spin' : ''} />
+        </button>
+        <button
           onClick={handleDisconnect}
           disabled={disconnecting}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted border border-border rounded-[8px] font-medium active:scale-[0.98] transition-transform disabled:opacity-50"
         >
           <Unlink size={14} />
           {disconnecting ? t('drive.disconnecting') : t('drive.disconnect')}

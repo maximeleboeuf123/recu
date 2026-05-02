@@ -157,8 +157,20 @@ export function DimensionsProvider({ children }) {
           : a
       )
     )
+
+    // Fire-and-forget: create the category folder in Drive under the current year
+    if (session?.access_token) {
+      fetch('/api/drive/sync-dimensions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      }).catch(() => {})
+    }
+
     return true
-  }, [userId])
+  }, [userId, session])
 
   // --- removeCategory: optimistic, cascade-clear receipts ---
   const removeCategory = useCallback(async (categoryId) => {

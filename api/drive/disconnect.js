@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
     const serviceClient = getServiceClient()
 
-    // Revoke token if we have one
+    // Revoke the OAuth token with Google
     try {
       const accessToken = await getValidToken(user.userId, serviceClient)
       if (accessToken) await revokeAccessToken(accessToken)
@@ -18,31 +18,12 @@ export default async function handler(req, res) {
       console.error('Token revoke error (non-critical):', e.message)
     }
 
-    // Delete token record
+    // Delete the token record only.
+    // Folder IDs (drive_folder_id, drive_inbox_id, dimensions.drive_folder_id,
+    // drive_year_folders) are intentionally preserved so that reconnecting the
+    // same Google account reuses the existing Drive folder structure instead of
+    // creating duplicates and orphaning files.
     await serviceClient.from('drive_tokens').delete().eq('user_id', user.userId)
-
-    // Clear all Drive folder IDs from users table (files in Drive are NOT deleted)
-    await serviceClient
-      .from('users')
-      .update({
-        drive_folder_id: null,
-        drive_inbox_id: null,
-        drive_exports_id: null,
-        drive_to_process_id: null,
-      })
-      .eq('id', user.userId)
-
-    // Clear drive_folder_id from all user's account dimensions
-    await serviceClient
-      .from('dimensions')
-      .update({ drive_folder_id: null })
-      .eq('user_id', user.userId)
-
-    // Delete all drive_year_folders rows for this user
-    await serviceClient
-      .from('drive_year_folders')
-      .delete()
-      .eq('user_id', user.userId)
 
     return res.status(200).json({ success: true })
   } catch (e) {
