@@ -50,11 +50,12 @@ async function _handler(req, res) {
 
   const { data: userData, error: userErr } = await serviceClient
     .from('users')
-    .select('drive_inbox_id')
+    .select('drive_inbox_id, drive_folder_id')
     .eq('id', userId)
     .single()
 
-  if (userErr || !userData?.drive_inbox_id) {
+  const folderId = userData?.drive_inbox_id || userData?.drive_folder_id
+  if (userErr || !folderId) {
     return res.status(400).json({ error: 'Drive not connected' })
   }
 
@@ -68,7 +69,7 @@ async function _handler(req, res) {
     filename,
     mimeType,
     fileBase64,
-    userData.drive_inbox_id,
+    folderId,
   )
 
   return res.status(200).json({

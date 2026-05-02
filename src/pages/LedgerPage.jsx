@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Search, BookOpen, SlidersHorizontal, X } from 'lucide-react'
+import { Search, BookOpen, SlidersHorizontal, X, Copy } from 'lucide-react'
 import { useReceipts } from '../hooks/useReceipts'
 import { usePatterns } from '../hooks/usePatterns'
 import { useDriveActions } from '../hooks/useDriveActions'
@@ -11,7 +11,7 @@ import ReviewCard from '../components/ReviewCard'
 
 export default function LedgerPage() {
   const { t, i18n } = useTranslation()
-  const { receipts, loading, updateReceipt, deleteReceipt, confirmReceipt } = useReceipts()
+  const { receipts, loading, updateReceipt, deleteReceipt, confirmReceipt, duplicateReceipt } = useReceipts()
   const { savePattern, applyPatternToPending } = usePatterns()
   const { renameToFinal, deleteFromDrive } = useDriveActions()
   const { filters, setField, setSearch, resetFilters, activeCount } = useLedgerFilters()
@@ -120,6 +120,12 @@ export default function LedgerPage() {
 
     setExpandedId(null)
     showToast(isApproval ? t('review.confirm_success', { count: 1 }) : t('common.save'))
+  }
+
+  const handleDuplicate = async (receipt) => {
+    const ok = await duplicateReceipt(receipt)
+    if (!ok) return showToast(t('common.error'))
+    showToast(lang === 'en' ? 'Receipt duplicated' : 'Reçu dupliqué')
   }
 
   // Category options filtered by selected account
@@ -336,7 +342,7 @@ export default function LedgerPage() {
                 onDelete={handleDelete}
               />
             ) : (
-              <LedgerRow key={r.id} receipt={r} onClick={() => setExpandedId(r.id)} />
+              <LedgerRow key={r.id} receipt={r} onClick={() => setExpandedId(r.id)} onDuplicate={handleDuplicate} />
             ),
           )}
         </div>
@@ -351,32 +357,43 @@ export default function LedgerPage() {
   )
 }
 
-function LedgerRow({ receipt, onClick }) {
+function LedgerRow({ receipt, onClick, onDuplicate }) {
   const isPending = receipt.status === 'pending'
 
   return (
-    <div
-      onClick={onClick}
-      className="flex items-center justify-between bg-surface border border-border rounded-[8px] px-4 py-3 cursor-pointer hover:border-primary/40 transition-colors active:scale-[0.99]"
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-[#1A1A18] truncate">{receipt.vendor || '—'}</p>
-          {isPending && (
-            <span className="flex-shrink-0 text-[10px] bg-warning/20 text-warning rounded px-1.5 py-0.5 font-medium">
-              En attente
-            </span>
-          )}
+    <div className="flex items-center bg-surface border border-border rounded-[8px] hover:border-primary/40 transition-colors">
+      <div
+        onClick={onClick}
+        className="flex-1 min-w-0 flex items-center px-4 py-3 cursor-pointer active:scale-[0.99]"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-[#1A1A18] truncate">{receipt.vendor || '—'}</p>
+            {isPending && (
+              <span className="flex-shrink-0 text-[10px] bg-warning/20 text-warning rounded px-1.5 py-0.5 font-medium">
+                En attente
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted mt-0.5">
+            {[receipt.invoice_date || '—', receipt.labels?.property, receipt.labels?.category].filter(Boolean).join(' · ')}
+          </p>
         </div>
-        <p className="text-xs text-muted mt-0.5">
-          {[receipt.invoice_date || '—', receipt.labels?.property, receipt.labels?.category].filter(Boolean).join(' · ')}
+        <p className="text-sm font-semibold text-[#1A1A18] flex-shrink-0 ml-3">
+          {receipt.total != null
+            ? new Intl.NumberFormat('fr-CA', { style: 'currency', currency: receipt.currency || 'CAD' }).format(receipt.total)
+            : '—'}
         </p>
       </div>
-      <p className="text-sm font-semibold text-[#1A1A18] flex-shrink-0 ml-3">
-        {receipt.total != null
-          ? new Intl.NumberFormat('fr-CA', { style: 'currency', currency: receipt.currency || 'CAD' }).format(receipt.total)
-          : '—'}
-      </p>
+      {!isPending && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDuplicate?.(receipt) }}
+          className="px-3 py-4 text-muted hover:text-primary transition-colors border-l border-border/60 flex-shrink-0"
+          aria-label="Duplicate"
+        >
+          <Copy size={14} />
+        </button>
+      )}
     </div>
   )
 }

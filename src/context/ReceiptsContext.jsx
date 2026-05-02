@@ -141,6 +141,37 @@ export function ReceiptsProvider({ children }) {
     return !error
   }, [])
 
+  const duplicateReceipt = useCallback(async (receipt) => {
+    const { error } = await supabase.from('receipts').insert({
+      user_id: receipt.user_id,
+      status: 'confirmed',
+      source: 'manual',
+      vendor: receipt.vendor,
+      invoice_date: receipt.invoice_date,
+      invoice_number: receipt.invoice_number,
+      description: receipt.description,
+      keyword: receipt.keyword,
+      subtotal: receipt.subtotal,
+      gst: receipt.gst,
+      qst: receipt.qst,
+      hst: receipt.hst,
+      total: receipt.total,
+      currency: receipt.currency || 'CAD',
+      currency_original: receipt.currency_original,
+      amount_original: receipt.amount_original,
+      vendor_gst_number: receipt.vendor_gst_number,
+      vendor_qst_number: receipt.vendor_qst_number,
+      vendor_neq: receipt.vendor_neq,
+      vendor_bn: receipt.vendor_bn,
+      labels: receipt.labels || {},
+      confidence_scores: {},
+      extracted_raw: {},
+      edit_history: [],
+    })
+    if (error) console.error('duplicateReceipt:', error.message)
+    return !error
+  }, [])
+
   const createRecurringEntry = useCallback(
     async (_receiptId, recurringData, receiptData) => {
       const { error } = await supabase.from('recurring_entries').insert({
@@ -174,6 +205,7 @@ export function ReceiptsProvider({ children }) {
         confirmReceipt,
         updateReceipt,
         deleteReceipt,
+        duplicateReceipt,
         createRecurringEntry,
         refresh,
       }}
