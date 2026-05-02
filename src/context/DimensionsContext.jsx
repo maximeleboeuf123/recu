@@ -302,8 +302,21 @@ export function DimensionsProvider({ children }) {
         )
       )
     }
+
+    // Fire-and-forget: create the new-named folder in Drive (old folder stays;
+    // receipts self-heal on next organize since findOrCreateFolder searches by name)
+    if (session?.access_token) {
+      fetch('/api/drive/sync-dimensions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      }).catch(() => {})
+    }
+
     return true
-  }, [userId, accountsWithCategories])
+  }, [userId, accountsWithCategories, session])
 
   // --- applyPreset: targetAccountId=null → create new account with accountName ---
   const applyPreset = useCallback(async (targetAccountId, accountName, categoryNames) => {

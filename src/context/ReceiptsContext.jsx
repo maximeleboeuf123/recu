@@ -191,6 +191,15 @@ export function ReceiptsProvider({ children }) {
                   : r
               )
             )
+            // Move the copied file to the correct Account/Year/Category folder
+            fetch('/api/drive/organize', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ receiptId: newRow.id }),
+            }).catch(() => {})
           }
         })
         .catch(() => {})
