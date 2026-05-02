@@ -1,13 +1,12 @@
 import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Camera, Upload, Plus, Copy, Repeat, ChevronRight, ArrowLeft } from 'lucide-react'
+import { Upload, Plus, Copy, Repeat, ChevronRight, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useReceipts } from '../hooks/useReceipts'
 import { useDrive } from '../hooks/useDrive'
 import { useDriveActions } from '../hooks/useDriveActions'
 import { supabase } from '../lib/supabase'
-import CameraCapture from '../components/CameraCapture'
 import UploadCapture from '../components/UploadCapture'
 import ManualReceiptForm from '../components/ManualReceiptForm'
 import { daysAgo, formatAmount } from '../lib/utils'
@@ -49,7 +48,7 @@ export default function HomePage() {
   const { driveState } = useDrive()
   const { organizeFile } = useDriveActions()
 
-  const [captureMode, setCaptureMode] = useState(null) // 'camera' | 'upload'
+  const [captureMode, setCaptureMode] = useState(null) // 'upload'
   const [createMode, setCreateMode] = useState(null)   // 'blank' | 'pickExisting' | 'recurring'
   const [templateReceipt, setTemplateReceipt] = useState(null)
 
@@ -245,14 +244,6 @@ export default function HomePage() {
   const recentReceipts = receipts.slice(0, 5)
 
   // ---- Overlay modes ----
-  if (captureMode === 'camera') {
-    return (
-      <CameraCapture
-        onSubmit={handleSingleCapture}
-        onClose={() => setCaptureMode(null)}
-      />
-    )
-  }
   if (captureMode === 'upload') {
     return (
       <UploadCapture
@@ -329,37 +320,20 @@ export default function HomePage() {
         <h2 className="text-xs text-muted uppercase tracking-wide font-medium mb-3">
           {lang === 'en' ? 'Capture' : 'Capturer'}
         </h2>
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => setCaptureMode('camera')}
-            className="flex flex-col items-center justify-center gap-3 bg-primary text-white rounded-[8px] p-6 active:scale-[0.97] transition-transform shadow-sm"
-          >
-            <Camera size={32} strokeWidth={1.8} />
-            <div className="text-center">
-              <p className="text-sm font-medium leading-tight">
-                {lang === 'en' ? 'Camera' : 'Caméra'}
-              </p>
-              <p className="text-[11px] opacity-80 mt-0.5 leading-tight">
-                {lang === 'en' ? 'With AI extraction' : 'Avec extraction IA'}
-              </p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setCaptureMode('upload')}
-            className="flex flex-col items-center justify-center gap-3 bg-surface text-primary border-2 border-primary rounded-[8px] p-6 active:scale-[0.97] transition-transform"
-          >
-            <Upload size={32} strokeWidth={1.8} />
-            <div className="text-center">
-              <p className="text-sm font-medium leading-tight">
-                {lang === 'en' ? 'File / Drive' : 'Fichier / Drive'}
-              </p>
-              <p className="text-[11px] text-muted mt-0.5 leading-tight">
-                {lang === 'en' ? 'From your device' : 'Depuis votre appareil'}
-              </p>
-            </div>
-          </button>
-        </div>
+        <button
+          onClick={() => setCaptureMode('upload')}
+          className="w-full flex items-center justify-center gap-3 bg-primary text-white rounded-[8px] py-5 active:scale-[0.97] transition-transform shadow-sm"
+        >
+          <Upload size={22} strokeWidth={1.8} />
+          <div className="text-left">
+            <p className="text-sm font-semibold leading-tight">
+              {lang === 'en' ? 'Upload a receipt' : 'Ajouter un reçu'}
+            </p>
+            <p className="text-[11px] opacity-75 mt-0.5 leading-tight">
+              {lang === 'en' ? 'Photo, PDF or file · AI extraction' : 'Photo, PDF ou fichier · Extraction IA'}
+            </p>
+          </div>
+        </button>
       </div>
 
       {/* Section: Create manually */}
