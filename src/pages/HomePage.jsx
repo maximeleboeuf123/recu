@@ -92,16 +92,20 @@ export default function HomePage() {
     async (pages) => {
       const result = await callExtract(pages)
       setCaptureMode(null)
-      if (result) navigate('/review')
+      if (result) {
+        await refresh()
+        navigate('/review')
+      }
     },
-    [callExtract, navigate],
+    [callExtract, navigate, refresh],
   )
 
   const handleBulkCapture = useCallback(
     async (pages) => {
       await callExtract(pages)
+      refresh()
     },
-    [callExtract],
+    [callExtract, refresh],
   )
 
   // ---- Manual save ----

@@ -32,8 +32,8 @@ export function ReceiptsProvider({ children }) {
   }, [userId])
 
   const refresh = useCallback(() => {
-    if (!userId) return
-    supabase
+    if (!userId) return Promise.resolve()
+    return supabase
       .from('receipts')
       .select('*')
       .eq('user_id', userId)
@@ -142,7 +142,7 @@ export function ReceiptsProvider({ children }) {
   }, [])
 
   const duplicateReceipt = useCallback(async (receipt) => {
-    const { error } = await supabase.from('receipts').insert({
+    const { data: newRow, error } = await supabase.from('receipts').insert({
       user_id: receipt.user_id,
       status: 'confirmed',
       source: 'manual',
@@ -167,9 +167,10 @@ export function ReceiptsProvider({ children }) {
       confidence_scores: {},
       extracted_raw: {},
       edit_history: [],
-    })
-    if (error) console.error('duplicateReceipt:', error.message)
-    return !error
+    }).select().single()
+    if (error) { console.error('duplicateReceipt:', error.message); return false }
+    setReceipts((prev) => [newRow, ...prev])
+    return true
   }, [])
 
   const createRecurringEntry = useCallback(
