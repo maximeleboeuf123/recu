@@ -4,6 +4,7 @@ import { LedgerFilterProvider } from './context/LedgerFilterContext'
 import { ReceiptsProvider } from './context/ReceiptsContext'
 import { DimensionsProvider } from './context/DimensionsContext'
 import Layout from './components/Layout'
+import UpdatePrompt from './components/UpdatePrompt'
 import AuthPage from './pages/AuthPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import HomePage from './pages/HomePage'
@@ -30,6 +31,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <UpdatePrompt />
       <LedgerFilterProvider>
         <Routes>
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
