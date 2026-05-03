@@ -1,15 +1,14 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, Upload, BookOpen, FileSpreadsheet, Settings } from 'lucide-react'
 
 export default function BottomNav({ pendingCount = 0 }) {
   const { t } = useTranslation()
   const location = useLocation()
-  const navigate = useNavigate()
 
   const tabs = [
     { path: '/',        iconKey: 'home',    Icon: Home },
-    { path: null,       iconKey: 'upload',  Icon: Upload, action: () => navigate('/', { state: { triggerCapture: true } }) },
+    { path: '/capture', iconKey: 'upload',  Icon: Upload },
     { path: '/ledger',  iconKey: 'ledger',  Icon: BookOpen },
     { path: '/export',  iconKey: 'export',  Icon: FileSpreadsheet },
     { path: '/settings',iconKey: 'settings',Icon: Settings },

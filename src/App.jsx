@@ -17,6 +17,7 @@ import ExportPage from './pages/ExportPage'
 import GuidePage from './pages/GuidePage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
+import CapturePage from './pages/CapturePage'
 
 export default function App() {
   const { session, loading } = useAuth()
@@ -43,6 +44,7 @@ export default function App() {
           ) : (
             <Route element={<ReceiptsProvider><DimensionsProvider><Layout /></DimensionsProvider></ReceiptsProvider>}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/capture" element={<CapturePage />} />
               <Route path="/review" element={<ReviewPage />} />
               <Route path="/ledger" element={<LedgerPage />} />
               <Route path="/settings" element={<SettingsPage />} />
