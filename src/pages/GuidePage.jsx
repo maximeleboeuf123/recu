@@ -1,57 +1,119 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Camera, Sparkles, CheckSquare, LayoutGrid, FileSpreadsheet, Receipt, Lightbulb, Send, Upload, Settings, Mail } from 'lucide-react'
+import { ArrowLeft, Camera, Sparkles, CheckSquare, LayoutGrid, FileSpreadsheet, Receipt, Lightbulb, Send, Upload, Settings, Mail, Cloud } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 const STEPS = {
   en: [
-    { icon: Camera,          color: 'bg-blue-50 text-blue-600',    title: 'Capture a receipt',         body: 'Tap the Capture tab. Upload a photo, PDF, or image — or use your camera. Multi-page receipts are supported.' },
-    { icon: Sparkles,        color: 'bg-violet-50 text-violet-600', title: 'AI extracts the data',      body: 'Claude AI reads vendor, date, amounts, and taxes automatically in ~60 seconds. Low-confidence fields are flagged.' },
-    { icon: CheckSquare,     color: 'bg-green-50 text-green-600',   title: 'Review & confirm',          body: 'Open the Review tab. Edit any field inline, then confirm. Swipe right to confirm fast, left to skip for later.' },
-    { icon: LayoutGrid,      color: 'bg-amber-50 text-amber-600',   title: 'Set up accounts',           body: 'Go to Settings → Accounts & Categories. Add accounts (e.g. "Personal", "Rental") and categories under each one.' },
-    { icon: Receipt,         color: 'bg-orange-50 text-orange-600', title: 'Assign & organise',         body: 'On each receipt card, pick an account and category. Récu learns your vendors and pre-fills them next time.' },
-    { icon: FileSpreadsheet, color: 'bg-emerald-50 text-emerald-600', title: 'Export for your accountant', body: 'Go to Export. Download an XLSX with all transactions + a summary tab grouped by account and category.' },
+    {
+      icon: Camera,
+      color: 'bg-blue-50 text-blue-600',
+      title: 'Capture a receipt',
+      body: 'Tap the Capture tab. Upload a photo, PDF, or image — or use your camera. Multi-page receipts are supported.',
+    },
+    {
+      icon: Cloud,
+      color: 'bg-indigo-50 text-indigo-600',
+      title: 'Connect Google Drive — highly recommended',
+      body: 'Go to Settings → Connect Google Drive. Récu will automatically save every receipt file into organized folders: Récu/_Receipts/{Account}/{Year}/{Category}/. Without Drive, only the extracted data is stored — you lose the original files. The CRA requires you to keep receipts for 6 years; Drive makes that effortless.',
+      highlight: true,
+    },
+    {
+      icon: LayoutGrid,
+      color: 'bg-amber-50 text-amber-600',
+      title: 'Set up accounts & categories',
+      body: 'Go to Settings → Accounts & Categories. Add accounts (e.g. "Personal", "Rental", "Business") and expense categories under each. This drives both Drive folder structure and your export report.',
+    },
+    {
+      icon: Sparkles,
+      color: 'bg-violet-50 text-violet-600',
+      title: 'AI extracts the data',
+      body: 'Claude AI reads vendor, date, amounts, and taxes automatically in ~60 seconds. Low-confidence fields are flagged for your review.',
+    },
+    {
+      icon: CheckSquare,
+      color: 'bg-green-50 text-green-600',
+      title: 'Review, assign & confirm',
+      body: 'Open the Review tab. Pick an account and category, edit any field if needed, then confirm. The file is automatically moved to the right Drive folder.',
+    },
+    {
+      icon: FileSpreadsheet,
+      color: 'bg-emerald-50 text-emerald-600',
+      title: 'Export for your accountant',
+      body: 'Go to Export. Download an XLSX with all transactions + a summary tab grouped by account and category — everything your accountant needs at tax time.',
+    },
   ],
   fr: [
-    { icon: Camera,          color: 'bg-blue-50 text-blue-600',    title: 'Capturer un reçu',             body: 'Appuyez sur Capturer. Téléversez une photo, un PDF ou une image — ou utilisez l\'appareil photo. Les reçus multi-pages sont supportés.' },
-    { icon: Sparkles,        color: 'bg-violet-50 text-violet-600', title: 'L\'IA extrait les données',    body: 'Claude IA lit le fournisseur, la date, les montants et les taxes automatiquement en ~60 secondes. Les champs incertains sont signalés.' },
-    { icon: CheckSquare,     color: 'bg-green-50 text-green-600',   title: 'Réviser et confirmer',         body: 'Ouvrez l\'onglet Révision. Modifiez n\'importe quel champ, puis confirmez. Glissez à droite pour confirmer vite, à gauche pour plus tard.' },
-    { icon: LayoutGrid,      color: 'bg-amber-50 text-amber-600',   title: 'Configurer les comptes',       body: 'Allez dans Paramètres → Comptes et catégories. Ajoutez des comptes (ex. « Personnel », « Locatif ») et des catégories.' },
-    { icon: Receipt,         color: 'bg-orange-50 text-orange-600', title: 'Assigner et organiser',        body: 'Sur chaque fiche, choisissez un compte et une catégorie. Récu apprend vos fournisseurs et les pré-remplit.' },
-    { icon: FileSpreadsheet, color: 'bg-emerald-50 text-emerald-600', title: 'Exporter pour votre comptable', body: 'Allez dans Exporter. Téléchargez un XLSX avec toutes les transactions + un onglet résumé par compte et catégorie.' },
+    {
+      icon: Camera,
+      color: 'bg-blue-50 text-blue-600',
+      title: 'Capturer un reçu',
+      body: 'Appuyez sur Capturer. Téléversez une photo, un PDF ou une image — ou utilisez l\'appareil photo. Les reçus multi-pages sont supportés.',
+    },
+    {
+      icon: Cloud,
+      color: 'bg-indigo-50 text-indigo-600',
+      title: 'Connecter Google Drive — fortement recommandé',
+      body: 'Allez dans Paramètres → Connecter Google Drive. Récu sauvegarde automatiquement chaque fichier dans des dossiers organisés : Récu/_Receipts/{Compte}/{Année}/{Catégorie}/. Sans Drive, seules les données extraites sont conservées — vous perdez les fichiers originaux. L\'ARC exige de conserver les reçus 6 ans ; Drive rend ça automatique.',
+      highlight: true,
+    },
+    {
+      icon: LayoutGrid,
+      color: 'bg-amber-50 text-amber-600',
+      title: 'Configurer comptes et catégories',
+      body: 'Allez dans Paramètres → Comptes et catégories. Ajoutez des comptes (ex. « Personnel », « Locatif », « Entreprise ») et des catégories de dépenses. Cela définit la structure des dossiers Drive et le rapport d\'export.',
+    },
+    {
+      icon: Sparkles,
+      color: 'bg-violet-50 text-violet-600',
+      title: 'L\'IA extrait les données',
+      body: 'Claude IA lit le fournisseur, la date, les montants et les taxes automatiquement en ~60 secondes. Les champs à faible confiance sont signalés.',
+    },
+    {
+      icon: CheckSquare,
+      color: 'bg-green-50 text-green-600',
+      title: 'Réviser, assigner et confirmer',
+      body: 'Ouvrez l\'onglet Révision. Choisissez un compte et une catégorie, modifiez si besoin, puis confirmez. Le fichier est automatiquement déplacé dans le bon dossier Drive.',
+    },
+    {
+      icon: FileSpreadsheet,
+      color: 'bg-emerald-50 text-emerald-600',
+      title: 'Exporter pour votre comptable',
+      body: 'Allez dans Exporter. Téléchargez un XLSX avec toutes les transactions + un onglet résumé par compte et catégorie — tout ce dont votre comptable a besoin.',
+    },
   ],
 }
 
 const TIPS = {
   en: [
+    { icon: '☁️', text: 'Google Drive uses the drive.file scope — Récu can only access files it creates. It never reads your existing Drive content.' },
     { icon: '🇨🇦', text: 'GST = 5% federal tax · QST = 9.975% Quebec tax · HST = combined 13–15% in Ontario and other provinces.' },
-    { icon: '🔢', text: 'For tax credits (ITCs/ITRs), you need the vendor\'s GST/QST number. Récu extracts these automatically.' },
+    { icon: '🔢', text: 'For tax credits (ITCs/ITRs), you need the vendor\'s GST/QST number on the receipt. Récu extracts these automatically.' },
     { icon: '📧', text: 'Forward invoices by email to your Récu inbox address — find it in Settings.' },
     { icon: '🔁', text: 'Use Capture → Recurring entries for monthly rent, subscriptions, or any fixed repeating expense.' },
-    { icon: '☁️', text: 'Connect Google Drive in Settings. Files are saved in Récu/_Receipts/{Account}/{Year}/{Category}/.' },
   ],
   fr: [
+    { icon: '☁️', text: 'Google Drive utilise la portée drive.file — Récu accède uniquement aux fichiers qu\'il crée. Il ne lit jamais votre Drive existant.' },
     { icon: '🇨🇦', text: 'TPS = 5% taxe fédérale · TVQ = 9,975% taxe québécoise · HST = taxe combinée 13–15% en Ontario et autres provinces.' },
-    { icon: '🔢', text: 'Pour les crédits de taxe (CTI/RTI), vous avez besoin du numéro TPS/TVQ du fournisseur. Récu les extrait automatiquement.' },
+    { icon: '🔢', text: 'Pour les crédits de taxe (CTI/RTI), vous avez besoin du numéro TPS/TVQ du fournisseur sur le reçu. Récu les extrait automatiquement.' },
     { icon: '📧', text: 'Transférez des factures par courriel à votre adresse Récu — trouvez-la dans Paramètres.' },
     { icon: '🔁', text: 'Utilisez Capturer → Entrées récurrentes pour les loyers, abonnements ou toute dépense fixe répétée.' },
-    { icon: '☁️', text: 'Connectez Google Drive dans Paramètres. Les fichiers sont sauvegardés dans Récu/_Receipts/{Compte}/{Année}/{Catégorie}/.' },
   ],
 }
 
 const CHAT_PROMPTS = {
   en: [
-    'How does Récu work?',
-    'How do I set up accounts and categories?',
-    'Do I need Google Drive?',
-    'How do recurring entries work?',
+    'Why should I connect Google Drive?',
+    'What happens to my receipts without Google Drive?',
+    'How does the Drive folder structure work?',
+    'How do I get started with Récu?',
   ],
   fr: [
-    'Comment fonctionne Récu ?',
-    'Comment configurer les comptes et catégories ?',
-    'Ai-je besoin de Google Drive ?',
-    'Comment fonctionnent les entrées récurrentes ?',
+    'Pourquoi connecter Google Drive ?',
+    'Que se passe-t-il sans Google Drive ?',
+    'Comment fonctionne la structure des dossiers Drive ?',
+    'Comment démarrer avec Récu ?',
   ],
 }
 
@@ -155,9 +217,9 @@ export default function GuidePage() {
 }
 
 function StepCard({ step, index }) {
-  const { icon: Icon, color, title, body } = step
+  const { icon: Icon, color, title, body, highlight } = step
   return (
-    <div className="bg-surface border border-border rounded-[8px] p-4 flex gap-3">
+    <div className={`rounded-[8px] p-4 flex gap-3 ${highlight ? 'bg-indigo-50 border border-indigo-200' : 'bg-surface border border-border'}`}>
       <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
         <div className={`w-9 h-9 rounded-[8px] flex items-center justify-center ${color}`}>
           <Icon size={17} strokeWidth={1.8} />
@@ -165,8 +227,8 @@ function StepCard({ step, index }) {
         <span className="text-[10px] font-bold text-muted/50">{index}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#1A1A18] mb-0.5">{title}</p>
-        <p className="text-xs text-muted leading-relaxed">{body}</p>
+        <p className={`text-sm font-semibold mb-0.5 ${highlight ? 'text-indigo-700' : 'text-[#1A1A18]'}`}>{title}</p>
+        <p className={`text-xs leading-relaxed ${highlight ? 'text-indigo-600/80' : 'text-muted'}`}>{body}</p>
       </div>
     </div>
   )

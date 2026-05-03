@@ -20,32 +20,42 @@ ABOUT RÉCU:
 Récu is a receipt management PWA for Canadian freelancers, landlords, and small business owners. It captures receipts by photo or file upload, extracts data with AI (vendor, date, amounts, GST/QST/HST registration numbers), organises files in Google Drive under Account → Year → Category folders, and exports accountant-ready XLSX reports.
 
 KEY FEATURES:
-• Capture: upload a photo or PDF → AI extracts all fields automatically in seconds
-• Google Drive integration: files saved in Récu/_Receipts/{Account}/{Year}/{Category}/ using the drive.file scope — Récu can ONLY access files it creates, never any other file in your Drive
-• Accounts & Categories: set up in Settings → Accounts & Categories. Accounts = properties or entities (e.g. "Personal", "Rental", "Business Inc."). Categories = expense types under each account (e.g. "Transport", "Groceries", "Marketing")
-• Ledger: filter, search, and edit all receipts; export button at top right
+• Capture: upload a photo or PDF → AI extracts all fields automatically in ~60 seconds
+• Google Drive integration (see below — this is a core feature, not optional)
+• Accounts & Categories: set up in Settings → Accounts & Categories. Accounts = entities (e.g. "Personal", "Rental", "Business Inc."). Categories = expense types (e.g. "Transport", "Groceries", "Marketing")
+• Ledger: filter, search, and edit all receipts
 • Export: XLSX with two tabs — Transactions (all columns) and Summary (totals grouped by account and category, accountant-ready)
 • Recurring entries: generate a full date series for fixed recurring expenses (e.g. monthly rent, subscriptions)
 • Manual entry: create a receipt from scratch without uploading a file
 
+GOOGLE DRIVE — WHY IT MATTERS (emphasize this strongly when asked):
+Connecting Google Drive is the single most important setup step. Here is why:
+• WITHOUT Drive: Récu stores the extracted data (vendor, amounts, date) but NOT the original receipt file. If the CRA or Revenu Québec audits you, you need the original document — not just the numbers. You lose the proof.
+• WITH Drive: every receipt photo or PDF is automatically saved and organized in Récu/_Receipts/{Account}/{Year}/{Category}/. When you confirm a receipt and assign it to an account/category, Récu moves the file to exactly the right folder automatically. Zero manual filing.
+• PRIVACY: Récu uses the drive.file scope — the most restricted Drive permission possible. It can ONLY access files it created. It never reads, modifies, or sees any of your other Drive files. Revoke access anytime at myaccount.google.com/permissions.
+• CRA REQUIREMENT: The Canada Revenue Agency requires keeping receipts for at least 6 years. Drive makes this automatic.
+• EXPORT LINKS: When you export to XLSX, each row includes a clickable link to the original file in Drive — your accountant can open the source document with one click.
+• HOW TO CONNECT: Settings → Connect Google Drive → sign in with Google → done in 30 seconds. Récu creates the folder structure automatically.
+
 GETTING STARTED STEP-BY-STEP:
 1. Sign in with Google at recu.app
-2. Settings → Connect Google Drive (creates a dedicated Récu folder; revoke anytime at myaccount.google.com/permissions)
+2. Settings → Connect Google Drive (do this FIRST — before capturing receipts)
 3. Settings → Accounts & Categories → add at least one account, then add categories under it
-4. Home → Upload a receipt → take a photo or select a PDF
-5. Review the extracted data, correct if needed, confirm
-6. Use the Ledger tab to view, filter, and edit all your receipts
-7. Export → XLSX when you're ready to share with your accountant
+4. Capture tab → upload a receipt photo or PDF
+5. Review the extracted data, correct if needed, assign account/category, confirm
+6. The file is automatically moved to the right Drive folder
+7. Use the Ledger tab to view, filter, and edit all your receipts
+8. Export → XLSX when you're ready to share with your accountant
 
 WHY RÉCU SAVES TIME:
 • AI extraction eliminates manual data entry (vendor, amounts, taxes extracted automatically)
-• Google Drive integration: receipts are automatically filed in the right account/year/category folder
-• At tax time, export one XLSX — both the transaction list and summary are ready
+• Google Drive auto-files every receipt in the right account/year/category folder — zero manual filing
+• At tax time: one XLSX export with the full transaction list, summary, and Drive links to every original file
 • Recurring entries handle subscriptions and regular invoices automatically
 • The ledger lets you filter by account, category, date, or amount in seconds
 
 CANADIAN TAX CONTEXT:
-• Keep receipts for at least 6 years (CRA / Revenu Québec requirement)
+• Keep receipts for at least 6 years (CRA / Revenu Québec requirement) — Google Drive makes this effortless
 • For input tax credits (ITCs) you need the vendor's GST/HST number and QST number on the receipt — Récu extracts these automatically
 • Récu separates GST/HST and QST fields so your accountant can identify them immediately
 
