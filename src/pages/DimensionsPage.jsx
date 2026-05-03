@@ -28,7 +28,7 @@ const PRESETS = [
 export default function DimensionsPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { accountsWithCategories, loading, removeAccount, addCategory, removeCategory, renameAccount, renameCategory, applyPreset } = useDimensions()
+  const { accountsWithCategories, loading, removeAccount, addCategory, removeCategory, renameAccount, renameCategory, applyPreset, updateAccountSetting } = useDimensions()
   const [configSheet, setConfigSheet] = useState(null) // null | { accountName, categories[] }
   const [toast, setToast] = useState(null)
 
@@ -124,6 +124,7 @@ export default function DimensionsPage() {
               onAddCategory={(name) => addCategory(account.id, name)}
               onRemoveCategory={(id) => removeCategory(id)}
               onRenameCategory={(id, name) => renameCategory(id, name)}
+              onUpdateSetting={(patch) => updateAccountSetting(account.id, patch)}
             />
           ))}
 
@@ -294,7 +295,7 @@ function AccountConfigSheet({ lang, initialName, initialCategories, onBack, onCr
   )
 }
 
-function AccountBlock({ account, lang, onRemoveAccount, onRenameAccount, onAddCategory, onRemoveCategory, onRenameCategory }) {
+function AccountBlock({ account, lang, onRemoveAccount, onRenameAccount, onAddCategory, onRemoveCategory, onRenameCategory, onUpdateSetting }) {
   const [open, setOpen] = useState(true)
   const [confirmAccount, setConfirmAccount] = useState(false)
   const [confirmCatId, setConfirmCatId] = useState(null)
@@ -392,6 +393,23 @@ function AccountBlock({ account, lang, onRemoveAccount, onRenameAccount, onAddCa
               )}
             </div>
           ))}
+          {/* Show taxes toggle */}
+          <div className="flex items-center justify-between px-4 py-2.5 border-t border-border/40 bg-background/30">
+            <span className="text-xs text-muted">
+              {lang === 'en' ? 'Show taxes in ledger card' : 'Afficher les taxes dans la fiche'}
+            </span>
+            <button
+              onClick={() => onUpdateSetting({ show_taxes: !account.show_taxes })}
+              className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
+                account.show_taxes ? 'bg-primary' : 'bg-border'
+              }`}
+            >
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                account.show_taxes ? 'translate-x-4' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
+
           <div className="pl-10 pr-4">
             <InlineAddCategory
               placeholder={lang === 'en' ? 'New category...' : 'Nouvelle catégorie...'}

@@ -128,6 +128,7 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
 
   const selectedAccount = accountsWithCategories.find((a) => a.name === fields.label_property)
   const accountNames = accountsWithCategories.map((a) => a.name)
+  const showTaxFields = selectedAccount ? selectedAccount.show_taxes !== false : true
   const categoryOptions = selectedAccount
     ? selectedAccount.categories.map((c) => c.name)
     : accountsWithCategories.flatMap((a) => a.categories.map((c) => c.name))
@@ -286,45 +287,49 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
           type="number"
           lowConfidence={conf.total === 'low'}
         />
-        <EditRow label={t('receipt.subtotal')} value={fields.subtotal} onSave={(v) => set('subtotal', v)} type="number" />
+        {showTaxFields && (
+          <>
+            <EditRow label={t('receipt.subtotal')} value={fields.subtotal} onSave={(v) => set('subtotal', v)} type="number" />
 
-        {/* Tax calculation helpers — shown when no taxes were on the receipt */}
-        {showTaxCheckboxes && (
-          <div className="px-4 py-2.5 space-y-2 bg-background/60">
-            <p className="text-[10px] text-muted uppercase tracking-wide font-medium">
-              {lang === 'en' ? 'Calculate taxes' : 'Calculer les taxes'}
-            </p>
-            <TaxCheckboxRow
-              label="TPS/GST 5% + TVQ/QST 9.975%"
-              hint={lang === 'en' ? 'Quebec' : 'Québec'}
-              checked={taxMode === 'gstqst'}
-              onToggle={() => handleTaxMode('gstqst')}
+            {/* Tax calculation helpers — shown when no taxes were on the receipt */}
+            {showTaxCheckboxes && (
+              <div className="px-4 py-2.5 space-y-2 bg-background/60">
+                <p className="text-[10px] text-muted uppercase tracking-wide font-medium">
+                  {lang === 'en' ? 'Calculate taxes' : 'Calculer les taxes'}
+                </p>
+                <TaxCheckboxRow
+                  label="TPS/GST 5% + TVQ/QST 9.975%"
+                  hint={lang === 'en' ? 'Quebec' : 'Québec'}
+                  checked={taxMode === 'gstqst'}
+                  onToggle={() => handleTaxMode('gstqst')}
+                />
+                <TaxCheckboxRow
+                  label="HST 13%"
+                  hint={lang === 'en' ? 'Ontario & Atlantic provinces' : 'Ontario & provinces atlantiques'}
+                  checked={taxMode === 'hst'}
+                  onToggle={() => handleTaxMode('hst')}
+                />
+              </div>
+            )}
+
+            <EditRow
+              label="TPS / GST"
+              value={fields.gst}
+              onSave={(v) => set('gst', v)}
+              type="number"
+              badge={gstCalculated && !showTaxCheckboxes ? t('review.calculated') : null}
+              lowConfidence={conf.total === 'low'}
             />
-            <TaxCheckboxRow
-              label="HST 13%"
-              hint={lang === 'en' ? 'Ontario & Atlantic provinces' : 'Ontario & provinces atlantiques'}
-              checked={taxMode === 'hst'}
-              onToggle={() => handleTaxMode('hst')}
+            <EditRow
+              label="TVQ / QST"
+              value={fields.qst}
+              onSave={(v) => set('qst', v)}
+              type="number"
+              badge={qstCalculated && !showTaxCheckboxes ? t('review.calculated') : null}
             />
-          </div>
+            <EditRow label="HST" value={fields.hst} onSave={(v) => set('hst', v)} type="number" />
+          </>
         )}
-
-        <EditRow
-          label="TPS / GST"
-          value={fields.gst}
-          onSave={(v) => set('gst', v)}
-          type="number"
-          badge={gstCalculated && !showTaxCheckboxes ? t('review.calculated') : null}
-          lowConfidence={conf.total === 'low'}
-        />
-        <EditRow
-          label="TVQ / QST"
-          value={fields.qst}
-          onSave={(v) => set('qst', v)}
-          type="number"
-          badge={qstCalculated && !showTaxCheckboxes ? t('review.calculated') : null}
-        />
-        <EditRow label="HST" value={fields.hst} onSave={(v) => set('hst', v)} type="number" />
 
         {/* Currency */}
         <div className="flex items-center justify-between px-4 py-2.5">
@@ -361,8 +366,12 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
         </div>
 
         {/* Vendor numbers */}
-        <EditRow label="No. TPS" value={fields.vendor_gst_number} onSave={(v) => set('vendor_gst_number', v)} />
-        <EditRow label="No. TVQ" value={fields.vendor_qst_number} onSave={(v) => set('vendor_qst_number', v)} />
+        {showTaxFields && (
+          <>
+            <EditRow label="No. TPS" value={fields.vendor_gst_number} onSave={(v) => set('vendor_gst_number', v)} />
+            <EditRow label="No. TVQ" value={fields.vendor_qst_number} onSave={(v) => set('vendor_qst_number', v)} />
+          </>
+        )}
       </div>
 
       {/* Warnings */}

@@ -16,7 +16,7 @@ export function DimensionsProvider({ children }) {
     if (!userId) { setLoading(false); return }
     const { data, error } = await supabase
       .from('dimensions')
-      .select('id, type, name, parent_id, sort_order')
+      .select('id, type, name, parent_id, sort_order, show_taxes')
       .eq('user_id', userId)
       .order('sort_order', { ascending: true })
       .order('name', { ascending: true })
@@ -33,6 +33,7 @@ export function DimensionsProvider({ children }) {
       accs.map((a) => ({
         id: a.id,
         name: a.name,
+        show_taxes: a.show_taxes !== false, // default true when null
         categories: cats.filter((c) => c.parent_id === a.id).map((c) => ({ id: c.id, name: c.name })),
       }))
     )
@@ -318,6 +319,22 @@ export function DimensionsProvider({ children }) {
     return true
   }, [userId, accountsWithCategories, session])
 
+  // --- updateAccountSetting: patch a single non-name field on an account row ---
+  const updateAccountSetting = useCallback(async (id, patch) => {
+    setAccountsWithCategories((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, ...patch } : a))
+    )
+    const { error } = await supabase.from('dimensions').update(patch).eq('id', id)
+    if (error) {
+      console.error('updateAccountSetting:', error.message)
+      setAccountsWithCategories((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, ...Object.fromEntries(Object.keys(patch).map((k) => [k, !patch[k]])) } : a))
+      )
+      return false
+    }
+    return true
+  }, [])
+
   // --- applyPreset: targetAccountId=null → create new account with accountName ---
   const applyPreset = useCallback(async (targetAccountId, accountName, categoryNames) => {
     let accountId = targetAccountId
@@ -379,7 +396,7 @@ export function DimensionsProvider({ children }) {
   return (
     <DimensionsContext.Provider value={{
       accountsWithCategories, loading,
-      addAccount, removeAccount, addCategory, removeCategory, renameAccount, renameCategory, applyPreset,
+      addAccount, removeAccount, addCategory, removeCategory, renameAccount, renameCategory, applyPreset, updateAccountSetting,
     }}>
       {children}
     </DimensionsContext.Provider>
