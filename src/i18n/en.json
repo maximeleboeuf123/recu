@@ -31,7 +31,11 @@
     "error_size": "File too large (max 10MB per page, 20MB total)",
     "error_type": "File type not supported",
     "error_rate": "Rate limit reached. Try again in an hour.",
-    "drag_drop": "Drag files here"
+    "drag_drop": "Drag files here",
+    "upload_title": "Upload a receipt",
+    "upload_hint": "Photo, PDF or image file · AI extraction",
+    "choose_file": "Choose file",
+    "formats": "JPG, PNG, HEIC, PDF — up to 20 MB"
   },
   "review": {
     "title": "Review Queue",

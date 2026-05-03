@@ -31,7 +31,11 @@
     "error_size": "Fichier trop volumineux (max 10 Mo par page, 20 Mo total)",
     "error_type": "Type de fichier non supporté",
     "error_rate": "Limite atteinte. Réessayez dans une heure.",
-    "drag_drop": "Glissez vos fichiers ici"
+    "drag_drop": "Glissez vos fichiers ici",
+    "upload_title": "Ajouter un reçu",
+    "upload_hint": "Photo, PDF ou fichier image · Extraction IA",
+    "choose_file": "Choisir un fichier",
+    "formats": "JPG, PNG, HEIC, PDF — jusqu'à 20 Mo"
   },
   "review": {
     "title": "À réviser",
