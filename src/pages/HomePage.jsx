@@ -318,6 +318,16 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* Welcome header */}
+      <div className="pt-1">
+        <h1 className="text-2xl font-bold text-[#1A1A18] tracking-tight">Récu</h1>
+        <p className="text-sm text-muted mt-0.5">
+          {lang === 'en'
+            ? 'Your receipts, organized and ready for tax time.'
+            : 'Vos reçus, organisés et prêts pour vos impôts.'}
+        </p>
+      </div>
+
       {/* Pending badge */}
       {pendingCount > 0 && (
         <button

@@ -131,20 +131,25 @@ export default function ChatOverlay({ onClose, initialPrompt }) {
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
         {isEmpty && (
-          <div className="flex flex-col items-center justify-center min-h-full gap-6 text-center py-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center shadow-sm">
-              <Sparkles size={28} className="text-primary" />
+          <div className="flex flex-col items-center justify-center min-h-full gap-5 text-center py-4">
+            {/* Brand mark */}
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm ring-1 ring-primary/10">
+              <Sparkles size={32} className="text-primary" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-[#1A1A18] mb-1">
-                {lang === 'fr' ? 'Comment puis-je vous aider ?' : 'How can I help you?'}
+
+            {/* Welcome copy */}
+            <div className="space-y-2 px-2">
+              <h2 className="text-xl font-bold text-[#1A1A18]">
+                {lang === 'fr' ? 'Bonjour ! Je suis votre assistant Récu.' : 'Hi there! I\'m your Récu assistant.'}
               </h2>
-              <p className="text-sm text-muted">
+              <p className="text-sm text-muted leading-relaxed">
                 {lang === 'fr'
-                  ? 'Choisissez une question ou posez la vôtre'
-                  : 'Pick a question or ask your own'}
+                  ? 'Je peux vous expliquer comment Récu fonctionne, vous aider à démarrer et répondre à toutes vos questions sur la gestion de vos reçus.'
+                  : 'I can explain how Récu works, walk you through setup, and answer any questions about managing your receipts for taxes or accounting.'}
               </p>
             </div>
+
+            {/* Quick prompts */}
             <div className="w-full space-y-2 text-left">
               {prompts.map((p) => (
                 <button
@@ -157,6 +162,10 @@ export default function ChatOverlay({ onClose, initialPrompt }) {
                 </button>
               ))}
             </div>
+
+            <p className="text-xs text-muted">
+              {lang === 'fr' ? 'Ou posez votre propre question ci-dessous' : 'Or type your own question below'}
+            </p>
           </div>
         )}
 

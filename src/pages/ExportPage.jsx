@@ -1,67 +1,130 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { FileSpreadsheet, FileText, ExternalLink, HardDrive, CheckCircle, X, SlidersHorizontal, Link as LinkIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, FileSpreadsheet, FileText, ExternalLink, HardDrive, CheckCircle } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useReceipts } from '../hooks/useReceipts'
 import { useDrive } from '../hooks/useDrive'
-import { useLedgerFilters } from '../context/LedgerFilterContext'
+import { useDimensions } from '../context/DimensionsContext'
 
-function applyFilters(receipts, filters) {
+const EMPTY_FILTERS = {
+  dateFrom: '', dateTo: '', account: '', category: '',
+  vendor: '', status: 'all', amountMin: '', amountMax: '',
+}
+
+function applyFilters(receipts, f) {
   let list = receipts
-  if (filters.search.trim()) {
-    const q = filters.search.toLowerCase()
-    list = list.filter((r) =>
-      (r.vendor || '').toLowerCase().includes(q) ||
-      (r.description || '').toLowerCase().includes(q) ||
-      (r.invoice_number || '').toLowerCase().includes(q)
-    )
-  }
-  if (filters.status !== 'all') list = list.filter((r) => r.status === filters.status)
-  if (filters.dateFrom) list = list.filter((r) => r.invoice_date >= filters.dateFrom)
-  if (filters.dateTo) list = list.filter((r) => r.invoice_date <= filters.dateTo)
-  if (filters.vendor.trim()) {
-    const q = filters.vendor.toLowerCase()
+  if (f.status !== 'all') list = list.filter((r) => r.status === f.status)
+  if (f.dateFrom) list = list.filter((r) => (r.invoice_date || '') >= f.dateFrom)
+  if (f.dateTo) list = list.filter((r) => (r.invoice_date || '') <= f.dateTo)
+  if (f.vendor.trim()) {
+    const q = f.vendor.toLowerCase()
     list = list.filter((r) => (r.vendor || '').toLowerCase().includes(q))
   }
-  if (filters.account) list = list.filter((r) => r.labels?.property === filters.account)
-  if (filters.category) list = list.filter((r) => r.labels?.category === filters.category)
-  if (filters.amountMin !== '') list = list.filter((r) => r.total != null && r.total >= parseFloat(filters.amountMin))
-  if (filters.amountMax !== '') list = list.filter((r) => r.total != null && r.total <= parseFloat(filters.amountMax))
+  if (f.account) list = list.filter((r) => r.labels?.property === f.account)
+  if (f.category) list = list.filter((r) => r.labels?.category === f.category)
+  if (f.amountMin !== '') list = list.filter((r) => r.total != null && r.total >= parseFloat(f.amountMin))
+  if (f.amountMax !== '') list = list.filter((r) => r.total != null && r.total <= parseFloat(f.amountMax))
   return list
 }
 
-const today = () => new Date().toISOString().slice(0, 10)
+function activeCount(f) {
+  return [
+    f.status !== 'all',
+    !!(f.dateFrom || f.dateTo),
+    !!f.vendor,
+    !!f.account,
+    !!f.category,
+    !!(f.amountMin || f.amountMax),
+  ].filter(Boolean).length
+}
+
+const isoToday = () => new Date().toISOString().slice(0, 10)
+
+function dateRangePresets(lang) {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth()
+
+  const pad = (n) => String(n).padStart(2, '0')
+  const lastDayOfMonth = (yr, mo) => new Date(yr, mo + 1, 0).getDate()
+
+  const thisYear  = { from: `${y}-01-01`,             to: `${y}-12-31` }
+  const thisQ     = (() => {
+    const q = Math.floor(m / 3)
+    const qStart = q * 3
+    return { from: `${y}-${pad(qStart + 1)}-01`, to: `${y}-${pad(qStart + 3)}-${pad(lastDayOfMonth(y, qStart + 2))}` }
+  })()
+  const thisMonth = { from: `${y}-${pad(m + 1)}-01`,  to: `${y}-${pad(m + 1)}-${pad(lastDayOfMonth(y, m))}` }
+  const lastMonth = (() => {
+    const lm = m === 0 ? 11 : m - 1
+    const ly = m === 0 ? y - 1 : y
+    return { from: `${ly}-${pad(lm + 1)}-01`, to: `${ly}-${pad(lm + 1)}-${pad(lastDayOfMonth(ly, lm))}` }
+  })()
+
+  if (lang === 'fr') {
+    return [
+      { label: 'Cette année',      ...thisYear },
+      { label: 'Ce trimestre',     ...thisQ },
+      { label: 'Ce mois',          ...thisMonth },
+      { label: 'Mois dernier',     ...lastMonth },
+    ]
+  }
+  return [
+    { label: 'This year',    ...thisYear },
+    { label: 'This quarter', ...thisQ },
+    { label: 'This month',   ...thisMonth },
+    { label: 'Last month',   ...lastMonth },
+  ]
+}
 
 export default function ExportPage() {
-  const { t, i18n } = useTranslation()
+  const { i18n } = useTranslation()
   const { session } = useAuth()
   const { receipts, loading: receiptsLoading } = useReceipts()
   const { driveState, loading: driveLoading } = useDrive()
-  const { filters, activeCount } = useLedgerFilters()
+  const { accountsWithCategories } = useDimensions()
 
-  const [scope, setScope] = useState(() => activeCount > 0 ? 'filtered' : 'all')
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [format, setFormat] = useState('xlsx')
-  const [filename, setFilename] = useState(`export_${today()}`)
+  const [filename, setFilename] = useState(`export_${isoToday()}`)
   const [exporting, setExporting] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const [showFilters, setShowFilters] = useState(true)
 
-  const lang = i18n.language === 'en' ? 'en' : 'fr'
+  const lang = i18n.language?.startsWith('fr') ? 'fr' : 'en'
+
+  const setField = (k, v) => setFilters((p) => ({ ...p, [k]: v }))
+  const clearFilters = () => setFilters(EMPTY_FILTERS)
 
   const allReceipts = useMemo(
-    () => receipts.filter((r) => r.status !== 'deleted').sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+    () => receipts.filter((r) => r.status !== 'deleted').sort((a, b) => new Date(a.invoice_date || 0) - new Date(b.invoice_date || 0)),
     [receipts]
   )
-  const filteredReceipts = useMemo(() => applyFilters(allReceipts, filters), [allReceipts, filters])
 
-  const exportList = scope === 'filtered' && activeCount > 0 ? filteredReceipts : allReceipts
+  const numActive = useMemo(() => activeCount(filters), [filters])
+  const exportList = useMemo(() => numActive > 0 ? applyFilters(allReceipts, filters) : allReceipts, [allReceipts, filters, numActive])
+
+  const exportTotal = useMemo(
+    () => exportList.reduce((sum, r) => sum + (r.total ?? 0), 0),
+    [exportList]
+  )
 
   const periodLabel = useMemo(() => {
     const dates = exportList.map((r) => r.invoice_date).filter(Boolean).sort()
     if (!dates.length) return ''
     return dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} to ${dates[dates.length - 1]}`
   }, [exportList])
+
+  const presets = useMemo(() => dateRangePresets(lang), [lang])
+
+  const categoryOptions = useMemo(() => {
+    const acc = accountsWithCategories.find((a) => a.name === filters.account)
+    return acc
+      ? acc.categories.map((c) => c.name)
+      : accountsWithCategories.flatMap((a) => a.categories.map((c) => c.name))
+  }, [accountsWithCategories, filters.account])
 
   const handleExport = async () => {
     if (!exportList.length || !filename.trim()) return
@@ -71,10 +134,7 @@ export default function ExportPage() {
     try {
       const res = await fetch('/api/drive/export', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: filename.trim(), format, receipts: exportList, period: periodLabel }),
       })
       const data = await res.json()
@@ -96,13 +156,10 @@ export default function ExportPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 pb-24 space-y-5">
-      <div className="flex items-center gap-3">
-        <Link to="/ledger" className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-border/30 transition-colors">
-          <ArrowLeft size={18} className="text-muted" />
-        </Link>
-        <h1 className="text-xl font-bold text-[#1A1A18]">{t('export.title')}</h1>
-      </div>
+    <div className="max-w-lg mx-auto px-4 py-6 pb-28 space-y-5">
+      <h1 className="text-xl font-bold text-[#1A1A18]">
+        {lang === 'en' ? 'Export' : 'Exporter'}
+      </h1>
 
       {/* Drive not connected */}
       {!driveState && (
@@ -126,50 +183,208 @@ export default function ExportPage() {
 
       {driveState && (
         <>
-          {/* Scope */}
+          {/* Filters */}
           <section>
-            <p className="text-xs text-muted uppercase tracking-wide font-medium mb-2">
-              {lang === 'en' ? 'What to export' : 'Quoi exporter'}
-            </p>
-            <div className="bg-surface rounded-[8px] border border-border divide-y divide-border">
-              <ScopeRow
-                selected={scope === 'all'}
-                onClick={() => setScope('all')}
-                label={lang === 'en' ? 'Full ledger' : 'Grand livre complet'}
-                count={allReceipts.length}
-                lang={lang}
-              />
-              <ScopeRow
-                selected={scope === 'filtered'}
-                onClick={() => setScope('filtered')}
-                label={lang === 'en' ? 'Current filters' : 'Filtres actuels'}
-                count={filteredReceipts.length}
-                lang={lang}
-                disabled={activeCount === 0}
-                hint={activeCount === 0 ? (lang === 'en' ? 'No active filters' : 'Aucun filtre actif') : null}
-              />
+            <div className="flex items-center justify-between mb-2">
+              <button
+                onClick={() => setShowFilters((v) => !v)}
+                className="flex items-center gap-1.5 text-xs text-muted uppercase tracking-wide font-medium hover:text-primary transition-colors"
+              >
+                <SlidersHorizontal size={13} />
+                {lang === 'en' ? 'Filters' : 'Filtres'}
+                {numActive > 0 && (
+                  <span className="bg-primary text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none">
+                    {numActive}
+                  </span>
+                )}
+              </button>
+              {numActive > 0 && (
+                <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-error hover:text-error/80 transition-colors">
+                  <X size={11} />
+                  {lang === 'en' ? 'Clear all' : 'Tout effacer'}
+                </button>
+              )}
             </div>
+
+            {showFilters && (
+              <div className="bg-surface border border-border rounded-[8px] p-4 space-y-4">
+                {/* Date presets */}
+                <div>
+                  <p className="text-xs text-muted font-medium mb-2">
+                    {lang === 'en' ? 'Period' : 'Période'}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {presets.map((p) => {
+                      const active = filters.dateFrom === p.from && filters.dateTo === p.to
+                      return (
+                        <button
+                          key={p.label}
+                          onClick={() => { setField('dateFrom', p.from); setField('dateTo', p.to) }}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                            active
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-background border-border text-muted hover:border-primary hover:text-primary'
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="date"
+                      value={filters.dateFrom}
+                      onChange={(e) => setField('dateFrom', e.target.value)}
+                      className="flex-1 text-sm bg-background border border-border rounded-[6px] px-3 py-2 focus:outline-none focus:border-primary transition-colors text-[#1A1A18]"
+                    />
+                    <span className="text-xs text-muted flex-shrink-0">→</span>
+                    <input
+                      type="date"
+                      value={filters.dateTo}
+                      onChange={(e) => setField('dateTo', e.target.value)}
+                      className="flex-1 text-sm bg-background border border-border rounded-[6px] px-3 py-2 focus:outline-none focus:border-primary transition-colors text-[#1A1A18]"
+                    />
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <p className="text-xs text-muted font-medium mb-2">
+                    {lang === 'en' ? 'Status' : 'Statut'}
+                  </p>
+                  <div className="flex gap-2">
+                    {['all', 'confirmed', 'pending'].map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setField('status', s)}
+                        className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                          filters.status === s
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-background border-border text-muted hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        {s === 'all' ? (lang === 'en' ? 'All' : 'Tous') : s === 'confirmed' ? (lang === 'en' ? 'Confirmed' : 'Confirmés') : (lang === 'en' ? 'Pending' : 'En attente')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Account + Category */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-xs text-muted font-medium mb-2">
+                      {lang === 'en' ? 'Account' : 'Compte'}
+                    </p>
+                    <select
+                      value={filters.account}
+                      onChange={(e) => { setField('account', e.target.value); setField('category', '') }}
+                      className="w-full text-sm bg-background border border-border rounded-[6px] px-3 py-2 focus:outline-none focus:border-primary transition-colors text-[#1A1A18]"
+                    >
+                      <option value="">{lang === 'en' ? 'All' : 'Tous'}</option>
+                      {accountsWithCategories.map((a) => (
+                        <option key={a.id} value={a.name}>{a.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted font-medium mb-2">
+                      {lang === 'en' ? 'Category' : 'Catégorie'}
+                    </p>
+                    <select
+                      value={filters.category}
+                      onChange={(e) => setField('category', e.target.value)}
+                      className="w-full text-sm bg-background border border-border rounded-[6px] px-3 py-2 focus:outline-none focus:border-primary transition-colors text-[#1A1A18]"
+                    >
+                      <option value="">{lang === 'en' ? 'All' : 'Toutes'}</option>
+                      {categoryOptions.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Vendor */}
+                <div>
+                  <p className="text-xs text-muted font-medium mb-2">
+                    {lang === 'en' ? 'Vendor' : 'Fournisseur'}
+                  </p>
+                  <input
+                    type="text"
+                    value={filters.vendor}
+                    onChange={(e) => setField('vendor', e.target.value)}
+                    placeholder={lang === 'en' ? 'Contains…' : 'Contient…'}
+                    className="w-full text-sm bg-background border border-border rounded-[6px] px-3 py-2 focus:outline-none focus:border-primary transition-colors text-[#1A1A18] placeholder:text-muted"
+                  />
+                </div>
+
+                {/* Amount range */}
+                <div>
+                  <p className="text-xs text-muted font-medium mb-2">
+                    {lang === 'en' ? 'Total amount' : 'Montant total'}
+                  </p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={filters.amountMin}
+                      onChange={(e) => setField('amountMin', e.target.value)}
+                      placeholder="Min"
+                      className="flex-1 text-sm bg-background border border-border rounded-[6px] px-3 py-2 focus:outline-none focus:border-primary transition-colors text-[#1A1A18] placeholder:text-muted"
+                    />
+                    <span className="text-xs text-muted flex-shrink-0">—</span>
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={filters.amountMax}
+                      onChange={(e) => setField('amountMax', e.target.value)}
+                      placeholder="Max"
+                      className="flex-1 text-sm bg-background border border-border rounded-[6px] px-3 py-2 focus:outline-none focus:border-primary transition-colors text-[#1A1A18] placeholder:text-muted"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
+
+          {/* Summary card */}
+          <div className="bg-primary/5 border border-primary/20 rounded-[8px] px-4 py-3 space-y-1">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-[#1A1A18]">
+                <span className="font-semibold">{exportList.length}</span>{' '}
+                {lang === 'en' ? `receipt${exportList.length !== 1 ? 's' : ''}` : `reçu${exportList.length !== 1 ? 's' : ''}`}
+                {numActive > 0 && (
+                  <span className="text-primary font-medium"> · {lang === 'en' ? 'filtered' : 'filtré'}</span>
+                )}
+              </p>
+              <p className="text-sm font-semibold text-primary">
+                {new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(exportTotal)}
+              </p>
+            </div>
+            <p className="text-xs text-muted">
+              {exportList.filter((r) => r.status === 'confirmed').length}{' '}
+              {lang === 'en' ? 'confirmed' : 'confirmés'}{' · '}
+              {exportList.filter((r) => r.status === 'pending').length}{' '}
+              {lang === 'en' ? 'pending' : 'en attente'}
+              {periodLabel ? ` · ${periodLabel}` : ''}
+            </p>
+          </div>
 
           {/* Format */}
           <section>
-            <p className="text-xs text-muted uppercase tracking-wide font-medium mb-2">
-              {lang === 'en' ? 'Format' : 'Format'}
-            </p>
+            <p className="text-xs text-muted uppercase tracking-wide font-medium mb-2">Format</p>
             <div className="grid grid-cols-2 gap-2">
               <FormatCard
                 selected={format === 'xlsx'}
                 onClick={() => setFormat('xlsx')}
                 icon={FileSpreadsheet}
                 label="XLSX"
-                description={lang === 'en' ? '2 tabs: Transactions (all columns) + Summary by account & category' : '2 onglets : Transactions (toutes colonnes) + Résumé par compte & catégorie'}
+                description={lang === 'en' ? '2 tabs: Transactions + Summary by account & category' : '2 onglets : Transactions + Résumé par compte & catégorie'}
               />
               <FormatCard
                 selected={format === 'csv'}
                 onClick={() => setFormat('csv')}
                 icon={FileText}
                 label="CSV"
-                description={lang === 'en' ? 'Plain text, compatible with any spreadsheet app' : 'Texte simple, compatible avec toutes les applications'}
+                description={lang === 'en' ? 'Plain text, compatible with any app' : 'Texte simple, compatible partout'}
               />
             </div>
           </section>
@@ -184,36 +399,23 @@ export default function ExportPage() {
                 value={filename}
                 onChange={(e) => setFilename(e.target.value)}
                 className="flex-1 bg-surface border border-border rounded-[8px] px-4 py-2.5 text-sm text-[#1A1A18] focus:outline-none focus:border-primary transition-colors"
-                placeholder="export_2026-05-01"
+                placeholder="export_2026-01-01"
               />
               <span className="text-sm text-muted flex-shrink-0">.{format}</span>
             </div>
             <p className="text-xs text-muted mt-1.5">
               {lang === 'en'
-                ? 'Saved to Récu/_Exports in your Google Drive. Existing file with this name will be replaced.'
-                : 'Enregistré dans Récu/_Exports de votre Google Drive. Un fichier existant portant ce nom sera remplacé.'}
+                ? 'Saved to Récu/_Exports in your Drive. Same filename overwrites the previous file.'
+                : 'Enregistré dans Récu/_Exports de votre Drive. Un même nom remplace le fichier précédent.'}
             </p>
           </section>
-
-          {/* Summary */}
-          <div className="bg-primary/5 border border-primary/20 rounded-[8px] px-4 py-3">
-            <p className="text-sm text-[#1A1A18]">
-              <span className="font-semibold">{exportList.length}</span>{' '}
-              {lang === 'en' ? `receipt${exportList.length !== 1 ? 's' : ''}` : `reçu${exportList.length !== 1 ? 's' : ''}`}
-              {' · '}
-              {exportList.filter((r) => r.status === 'confirmed').length}{' '}
-              {lang === 'en' ? 'confirmed' : 'confirmés'},{' '}
-              {exportList.filter((r) => r.status === 'pending').length}{' '}
-              {lang === 'en' ? 'pending' : 'en attente'}
-            </p>
-          </div>
 
           {/* Error */}
           {error && (
             <p className="text-sm text-error">
               {error === 'drive_not_connected'
                 ? (lang === 'en' ? 'Drive not connected.' : 'Drive non connecté.')
-                : t('common.error')}
+                : (lang === 'en' ? 'Something went wrong.' : 'Une erreur est survenue.')}
             </p>
           )}
 
@@ -243,37 +445,17 @@ export default function ExportPage() {
           <button
             onClick={handleExport}
             disabled={exporting || !exportList.length || !filename.trim()}
-            className="w-full py-3 text-sm bg-primary text-white rounded-[8px] font-medium active:scale-[0.98] transition-transform disabled:opacity-50"
+            className="w-full py-3.5 text-sm bg-primary text-white rounded-[8px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-50"
           >
             {exporting
               ? (lang === 'en' ? 'Exporting…' : 'Exportation…')
-              : (lang === 'en' ? `Export ${exportList.length} receipt${exportList.length !== 1 ? 's' : ''}` : `Exporter ${exportList.length} reçu${exportList.length !== 1 ? 's' : ''}`)}
+              : (lang === 'en'
+                  ? `Export ${exportList.length} receipt${exportList.length !== 1 ? 's' : ''}`
+                  : `Exporter ${exportList.length} reçu${exportList.length !== 1 ? 's' : ''}`)}
           </button>
         </>
       )}
     </div>
-  )
-}
-
-function ScopeRow({ selected, onClick, label, count, lang, disabled, hint }) {
-  return (
-    <button
-      onClick={!disabled ? onClick : undefined}
-      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${disabled ? 'opacity-40 cursor-default' : 'hover:bg-background'}`}
-    >
-      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${selected && !disabled ? 'border-primary bg-primary' : 'border-border'}`}>
-        {selected && !disabled && <div className="w-full h-full rounded-full bg-white scale-[0.45]" />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[#1A1A18]">{label}</p>
-        {hint && <p className="text-xs text-muted">{hint}</p>}
-      </div>
-      {!hint && (
-        <span className="text-xs text-muted flex-shrink-0">
-          {count} {lang === 'en' ? (count !== 1 ? 'receipts' : 'receipt') : (count !== 1 ? 'reçus' : 'reçu')}
-        </span>
-      )}
-    </button>
   )
 }
 

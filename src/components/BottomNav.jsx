@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Upload, ClipboardCheck, BookOpen, Settings } from 'lucide-react'
+import { Home, Upload, BookOpen, FileSpreadsheet, Settings } from 'lucide-react'
 
 export default function BottomNav({ pendingCount = 0 }) {
   const { t } = useTranslation()
@@ -8,11 +8,11 @@ export default function BottomNav({ pendingCount = 0 }) {
   const navigate = useNavigate()
 
   const tabs = [
-    { path: '/', iconKey: 'home', Icon: Home },
-    { path: null, iconKey: 'upload', Icon: Upload, action: () => navigate('/', { state: { triggerCapture: true } }) },
-    { path: '/review', iconKey: 'review', Icon: ClipboardCheck },
-    { path: '/ledger', iconKey: 'ledger', Icon: BookOpen },
-    { path: '/settings', iconKey: 'settings', Icon: Settings },
+    { path: '/',        iconKey: 'home',    Icon: Home },
+    { path: null,       iconKey: 'upload',  Icon: Upload, action: () => navigate('/', { state: { triggerCapture: true } }) },
+    { path: '/ledger',  iconKey: 'ledger',  Icon: BookOpen },
+    { path: '/export',  iconKey: 'export',  Icon: FileSpreadsheet },
+    { path: '/settings',iconKey: 'settings',Icon: Settings },
   ]
 
   return (
@@ -22,7 +22,7 @@ export default function BottomNav({ pendingCount = 0 }) {
     >
       {tabs.map(({ path, iconKey, Icon, action }) => {
         const active = path !== null && location.pathname === path
-        const badge = iconKey === 'review' && pendingCount > 0 ? pendingCount : null
+        const badge = iconKey === 'home' && pendingCount > 0 ? pendingCount : null
 
         const inner = (
           <>
