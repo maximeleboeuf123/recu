@@ -9,6 +9,15 @@ import { useDimensions } from '../context/DimensionsContext'
 
 const CURRENCIES = ['CAD', 'USD', 'EUR', 'GBP', 'CHF', 'MXN']
 
+const PAYMENT_METHODS = [
+  { value: 'cash',       label: { en: 'Cash',       fr: 'Comptant' } },
+  { value: 'visa',       label: { en: 'Visa',        fr: 'Visa' } },
+  { value: 'mastercard', label: { en: 'Mastercard',  fr: 'Mastercard' } },
+  { value: 'amex',       label: { en: 'Amex',        fr: 'Amex' } },
+  { value: 'debit',      label: { en: 'Debit',       fr: 'Débit' } },
+  { value: 'other',      label: { en: 'Other',       fr: 'Autre' } },
+]
+
 // mode: 'review' (confirm/skip) | 'ledger' (save/cancel)
 export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip, onDelete, onClose, onReplaceFile }) {
   const { t, i18n } = useTranslation()
@@ -48,6 +57,7 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
     vendor_qst_number: receipt.vendor_qst_number || '',
     label_category: receipt.labels?.category || '',
     label_property: receipt.labels?.property || '',
+    payment_method: receipt.payment_method || '',
   })
 
   const [recurring, setRecurring] = useState(null)
@@ -328,6 +338,26 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
+        </div>
+
+        {/* Payment method */}
+        <div className="flex items-center px-4 py-2.5 gap-3">
+          <span className="text-sm text-muted w-28 flex-shrink-0">{t('receipt.payment_method')}</span>
+          <div className="flex flex-wrap gap-1.5">
+            {PAYMENT_METHODS.map((p) => (
+              <button
+                key={p.value}
+                onMouseDown={() => set('payment_method', fields.payment_method === p.value ? '' : p.value)}
+                className={`px-2.5 py-0.5 text-xs rounded-full border transition-colors ${
+                  fields.payment_method === p.value
+                    ? 'bg-primary text-white border-primary'
+                    : 'text-muted border-border hover:border-primary hover:text-primary'
+                }`}
+              >
+                {p.label[lang]}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Vendor numbers */}

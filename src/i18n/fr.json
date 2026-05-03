@@ -100,7 +100,8 @@
     "category": "Catégorie",
     "subtotal": "Sous-total",
     "total": "Total",
-    "currency": "Devise"
+    "currency": "Devise",
+    "payment_method": "Paiement"
   },
   "settings": {
     "title": "Paramètres",

@@ -172,6 +172,7 @@ async function _handler(req, res) {
   "vendor_qst_number": "XXXXXXXXXX TQ XXXX format or null",
   "vendor_neq": "10 digit number or null",
   "vendor_bn": "9 digit number or null",
+  "payment_method": "cash|visa|mastercard|amex|debit|other or null — detect from receipt text (e.g. 'VISA', 'Mastercard', 'Débit', 'Cash', 'Comptant')",
   "confidence": {
     "vendor": "high/medium/low",
     "invoice_date": "high/medium/low",
@@ -261,6 +262,7 @@ async function _handler(req, res) {
     vendor_qst_number: extracted.vendor_qst_number,
     vendor_neq: extracted.vendor_neq,
     vendor_bn: extracted.vendor_bn,
+    payment_method: extracted.payment_method || null,
     filename,
     source: 'manual',
     extracted_raw: extracted,

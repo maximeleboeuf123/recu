@@ -21,6 +21,7 @@ const COLUMNS = [
   { header: 'Invoice #',     get: (r) => r.invoice_number || '',            width: 16, type: 'text' },
   { header: 'Description',   get: (r) => r.description || '',               width: 28, type: 'text' },
   { header: 'Status',        get: (r) => r.status || '',                    width: 12, type: 'text' },
+  { header: 'Payment Method', get: (r) => r.payment_method || '',           width: 16, type: 'text' },
   { header: 'Account',       get: (r) => r.labels?.property || '',          width: 20, type: 'text' },
   { header: 'Category',      get: (r) => r.labels?.category || '',          width: 20, type: 'text' },
   { header: 'Total',         get: (r) => r.total ?? '',                     width: 12, type: 'number' },

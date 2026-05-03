@@ -100,7 +100,8 @@
     "category": "Category",
     "subtotal": "Subtotal",
     "total": "Total",
-    "currency": "Currency"
+    "currency": "Currency",
+    "payment_method": "Payment"
   },
   "settings": {
     "title": "Settings",

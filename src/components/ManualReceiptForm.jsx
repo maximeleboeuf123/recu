@@ -3,6 +3,15 @@ import { ArrowLeft, Check, Paperclip, X, ChevronDown } from 'lucide-react'
 import { useDimensions } from '../context/DimensionsContext'
 import DimensionRow from './DimensionRow'
 
+const PAYMENT_METHODS = [
+  { value: 'cash',       label_en: 'Cash',       label_fr: 'Comptant' },
+  { value: 'visa',       label_en: 'Visa',        label_fr: 'Visa' },
+  { value: 'mastercard', label_en: 'Mastercard',  label_fr: 'Mastercard' },
+  { value: 'amex',       label_en: 'Amex',        label_fr: 'Amex' },
+  { value: 'debit',      label_en: 'Debit',       label_fr: 'Débit' },
+  { value: 'other',      label_en: 'Other',       label_fr: 'Autre' },
+]
+
 const FREQ_OPTIONS = [
   { value: 'weekly:1',  label_en: 'Weekly',         label_fr: 'Hebdomadaire', unit: 'weekly',  interval: 1 },
   { value: 'monthly:1', label_en: 'Monthly',        label_fr: 'Mensuel',      unit: 'monthly', interval: 1 },
@@ -51,6 +60,7 @@ export default function ManualReceiptForm({ lang, initialValues, isRecurring, dr
     vendor_qst_number: initialValues.vendor_qst_number || '',
     label_category: initialValues.labels?.category || '',
     label_property: initialValues.labels?.property || '',
+    payment_method: initialValues.payment_method || '',
   })
 
   const [schedule, setSchedule] = useState({
@@ -204,6 +214,25 @@ export default function ManualReceiptForm({ lang, initialValues, isRecurring, dr
               value={fields.invoice_number}
               onChange={(e) => setField('invoice_number', e.target.value)}
             />
+          </div>
+          <div className={rowClass}>
+            <span className={labelClass}>{lang === 'en' ? 'Payment' : 'Paiement'}</span>
+            <div className="flex flex-wrap gap-1.5">
+              {PAYMENT_METHODS.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => setField('payment_method', fields.payment_method === p.value ? '' : p.value)}
+                  className={`px-2.5 py-0.5 text-xs rounded-full border transition-colors ${
+                    fields.payment_method === p.value
+                      ? 'bg-primary text-white border-primary'
+                      : 'text-muted border-border hover:border-primary hover:text-primary'
+                  }`}
+                >
+                  {lang === 'en' ? p.label_en : p.label_fr}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
