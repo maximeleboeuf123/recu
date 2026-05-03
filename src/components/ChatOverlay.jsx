@@ -50,12 +50,13 @@ export default function ChatOverlay({ onClose, initialPrompt }) {
 
   const prompts = PROMPTS[lang]
 
+  // Wait for session to load before auto-sending the initial prompt
   useEffect(() => {
-    if (initialPrompt && !didInit.current) {
+    if (initialPrompt && session && !didInit.current) {
       didInit.current = true
       sendMessage(initialPrompt)
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -63,7 +64,7 @@ export default function ChatOverlay({ onClose, initialPrompt }) {
 
   const sendMessage = async (text) => {
     const content = (typeof text === 'string' ? text : input).trim()
-    if (!content || loading) return
+    if (!content || loading || !session?.access_token) return
 
     setInput('')
     setSuggestions([])

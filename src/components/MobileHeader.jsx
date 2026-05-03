@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, HelpCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import LanguageToggle from './LanguageToggle'
 import { useAuth } from '../hooks/useAuth'
 import { useReceipts } from '../hooks/useReceipts'
@@ -31,6 +32,9 @@ export default function MobileHeader() {
         >
           <RefreshCw size={17} className={spinning ? 'animate-spin' : ''} />
         </button>
+        <Link to="/guide" className="text-muted hover:text-primary transition-colors p-1" aria-label="Guide">
+          <HelpCircle size={17} />
+        </Link>
         <LanguageToggle session={session} />
       </div>
     </header>

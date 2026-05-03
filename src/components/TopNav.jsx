@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, HelpCircle } from 'lucide-react'
 import LanguageToggle from './LanguageToggle'
 import { useAuth } from '../hooks/useAuth'
 import { useReceipts } from '../hooks/useReceipts'
@@ -57,6 +57,9 @@ export default function TopNav() {
         >
           <RefreshCw size={17} className={spinning ? 'animate-spin' : ''} />
         </button>
+        <Link to="/guide" className="text-muted hover:text-primary transition-colors p-1" aria-label="Guide">
+          <HelpCircle size={17} />
+        </Link>
         <LanguageToggle session={session} />
       </div>
     </header>
