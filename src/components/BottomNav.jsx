@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Upload, BookOpen, FileSpreadsheet, Settings } from 'lucide-react'
+import { Home, Upload, ClipboardList, BookOpen, Settings } from 'lucide-react'
 
 export default function BottomNav({ pendingCount = 0 }) {
   const { t } = useTranslation()
@@ -9,8 +9,8 @@ export default function BottomNav({ pendingCount = 0 }) {
   const tabs = [
     { path: '/',        iconKey: 'home',    Icon: Home },
     { path: '/capture', iconKey: 'upload',  Icon: Upload },
+    { path: '/review',  iconKey: 'review',  Icon: ClipboardList },
     { path: '/ledger',  iconKey: 'ledger',  Icon: BookOpen },
-    { path: '/export',  iconKey: 'export',  Icon: FileSpreadsheet },
     { path: '/settings',iconKey: 'settings',Icon: Settings },
   ]
 
@@ -19,12 +19,18 @@ export default function BottomNav({ pendingCount = 0 }) {
       className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-50 flex items-stretch"
       style={{ height: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
     >
-      {tabs.map(({ path, iconKey, Icon, action }) => {
-        const active = path !== null && location.pathname === path
-        const badge = iconKey === 'home' && pendingCount > 0 ? pendingCount : null
+      {tabs.map(({ path, iconKey, Icon }) => {
+        const active = location.pathname === path
+        const badge = iconKey === 'review' && pendingCount > 0 ? pendingCount : null
 
-        const inner = (
-          <>
+        return (
+          <Link
+            key={path}
+            to={path}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 pb-[env(safe-area-inset-bottom,0px)] transition-colors ${
+              active ? 'text-primary' : 'text-muted'
+            }`}
+          >
             <div className="relative">
               <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
               {badge && (
@@ -36,24 +42,6 @@ export default function BottomNav({ pendingCount = 0 }) {
             <span className={`text-[10px] ${active ? 'font-semibold' : 'font-normal'}`}>
               {t(`nav.${iconKey}`)}
             </span>
-          </>
-        )
-
-        const cls = `flex-1 flex flex-col items-center justify-center gap-0.5 pb-[env(safe-area-inset-bottom,0px)] transition-colors ${
-          active ? 'text-primary' : 'text-muted'
-        }`
-
-        if (action) {
-          return (
-            <button key={iconKey} onClick={action} className={cls}>
-              {inner}
-            </button>
-          )
-        }
-
-        return (
-          <Link key={path} to={path} className={cls}>
-            {inner}
           </Link>
         )
       })}
