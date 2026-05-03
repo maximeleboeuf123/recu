@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { ArrowLeft, Check, Paperclip, X, ChevronDown } from 'lucide-react'
 import { useDimensions } from '../context/DimensionsContext'
+import DimensionRow from './DimensionRow'
 
 const FREQ_OPTIONS = [
   { value: 'weekly:1',  label_en: 'Weekly',         label_fr: 'Hebdomadaire', unit: 'weekly',  interval: 1 },
@@ -211,42 +212,19 @@ export default function ManualReceiptForm({ lang, initialValues, isRecurring, dr
           <p className={sectionLabelClass}>
             {lang === 'en' ? 'Account & category' : 'Compte et catégorie'}
           </p>
-          <div className={rowClass}>
-            <span className={labelClass}>{lang === 'en' ? 'Account' : 'Compte'}</span>
-            <div className="flex-1 flex items-center gap-1">
-              <select
-                className={`${inputClass} appearance-none`}
-                value={fields.label_property}
-                onChange={(e) => {
-                  setField('label_property', e.target.value)
-                  setField('label_category', '')
-                }}
-              >
-                <option value="">—</option>
-                {accountsWithCategories.map((a) => (
-                  <option key={a.id} value={a.name}>{a.name}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="text-muted flex-shrink-0" />
-            </div>
-          </div>
-          <div className={rowClass}>
-            <span className={labelClass}>{lang === 'en' ? 'Category' : 'Catégorie'}</span>
-            <div className="flex-1 flex items-center gap-1">
-              <select
-                className={`${inputClass} appearance-none`}
-                value={fields.label_category}
-                onChange={(e) => setField('label_category', e.target.value)}
-                disabled={categoryOptions.length === 0}
-              >
-                <option value="">—</option>
-                {categoryOptions.map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="text-muted flex-shrink-0" />
-            </div>
-          </div>
+          <DimensionRow
+            label={lang === 'en' ? 'Account' : 'Compte'}
+            value={fields.label_property}
+            options={accountsWithCategories.map((a) => a.name)}
+            onChange={(v) => { setField('label_property', v); setField('label_category', '') }}
+          />
+          <DimensionRow
+            label={lang === 'en' ? 'Category' : 'Catégorie'}
+            value={fields.label_category}
+            options={categoryOptions.map((c) => c.name)}
+            onChange={(v) => setField('label_category', v)}
+            dimmed={accountsWithCategories.length > 0 && !fields.label_property}
+          />
         </div>
 
         {/* Section: Amounts */}
