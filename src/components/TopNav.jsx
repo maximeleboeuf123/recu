@@ -10,6 +10,7 @@ const LINKS = [
   { path: '/', key: 'home' },
   { path: '/review', key: 'review' },
   { path: '/ledger', key: 'ledger' },
+  { path: '/export', key: 'export' },
   { path: '/settings', key: 'settings' },
 ]
 
