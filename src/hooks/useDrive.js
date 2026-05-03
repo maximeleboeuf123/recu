@@ -12,12 +12,13 @@ export function useDrive() {
   const fetchDriveState = useCallback(async () => {
     if (!userId) { setLoading(false); return }
 
-    const [{ data: userData }, { data: tokenRow }] = await Promise.all([
-      supabase.from('users').select('drive_folder_id, drive_inbox_id').eq('id', userId).single(),
-      supabase.from('drive_tokens').select('user_id').eq('user_id', userId).maybeSingle(),
-    ])
+    const { data: userData } = await supabase
+      .from('users')
+      .select('drive_folder_id, drive_inbox_id, drive_token_active')
+      .eq('id', userId)
+      .single()
 
-    if (!userData?.drive_folder_id || !tokenRow) {
+    if (!userData?.drive_folder_id || !userData?.drive_token_active) {
       setDriveState(null)
       setLoading(false)
       return

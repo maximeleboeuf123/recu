@@ -24,6 +24,7 @@ export default async function handler(req, res) {
     // same Google account reuses the existing Drive folder structure instead of
     // creating duplicates and orphaning files.
     await serviceClient.from('drive_tokens').delete().eq('user_id', user.userId)
+    await serviceClient.from('users').update({ drive_token_active: false }).eq('id', user.userId)
 
     return res.status(200).json({ success: true })
   } catch (e) {

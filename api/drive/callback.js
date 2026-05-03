@@ -110,6 +110,9 @@ export default async function handler(req, res) {
     }
   }
 
+  // Mark token as active regardless of which branch ran above
+  await serviceClient.from('users').update({ drive_token_active: true }).eq('id', userId)
+
   // Always sync account-level folders with dimensions (idempotent, fast).
   // Full category/year sync is available via the sync-dimensions endpoint.
   if (inboxId) {
