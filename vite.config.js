@@ -36,11 +36,19 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        globPatterns: ['**/*.{js,css,ico,png,svg,woff2}'],
         skipWaiting: true,
         clientsClaim: true,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              networkTimeoutSeconds: 5,
+              cacheName: 'pages-cache',
+            },
+          },
+        ],
       },
     }),
   ],
