@@ -39,16 +39,6 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,ico,png,svg,woff2}'],
         skipWaiting: true,
         clientsClaim: true,
-        runtimeCaching: [
-          {
-            urlPattern: ({ request }) => request.mode === 'navigate',
-            handler: 'NetworkFirst',
-            options: {
-              networkTimeoutSeconds: 5,
-              cacheName: 'pages-cache',
-            },
-          },
-        ],
       },
     }),
   ],
