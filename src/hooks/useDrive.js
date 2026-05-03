@@ -18,7 +18,7 @@ export function useDrive() {
       .eq('id', userId)
       .single()
 
-    if (!userData?.drive_folder_id || !userData?.drive_token_active) {
+    if (!userData?.drive_folder_id || userData?.drive_token_active === false) {
       setDriveState(null)
       setLoading(false)
       return

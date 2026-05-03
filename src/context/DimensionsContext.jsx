@@ -14,14 +14,14 @@ export function DimensionsProvider({ children }) {
 
   const load = useCallback(async () => {
     if (!userId) { setLoading(false); return }
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('dimensions')
-      .select('id, type, name, parent_id, sort_order, show_taxes')
+      .select('*')
       .eq('user_id', userId)
       .order('sort_order', { ascending: true })
       .order('name', { ascending: true })
     if (error) {
-      console.error('DimensionsContext load:', error.message, '— did you run the parent_id migration?')
+      console.error('DimensionsContext load:', error.message)
       setLoading(false)
       return
     }
