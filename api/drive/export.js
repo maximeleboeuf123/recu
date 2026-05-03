@@ -34,6 +34,7 @@ const COLUMNS = [
   { header: 'Source',        get: (r) => r.source || '',                    width: 12, type: 'text' },
   { header: 'Filename',      get: (r) => r.filename || '',                  width: 28, type: 'text' },
   { header: 'Captured At',   get: (r) => r.created_at ? r.created_at.slice(0, 10) : '', width: 14, type: 'text' },
+  { header: 'Receipt Link',  get: (r) => r.drive_url || '',                 width: 40, type: 'link' },
 ]
 
 function generateCSV(receipts) {
@@ -64,14 +65,31 @@ function applyNumFmt(ws, numColIndices, startRow) {
 }
 
 function buildTransactionsSheet(receipts) {
+  const linkColIdx = COLUMNS.findIndex((c) => c.type === 'link')
+
   const rowData = receipts.map((r) =>
-    Object.fromEntries(COLUMNS.map((c) => [c.header, c.get(r)]))
+    Object.fromEntries(
+      COLUMNS.map((c) => [c.header, c.type === 'link' ? (c.get(r) ? 'View' : '') : c.get(r)])
+    )
   )
   const ws = XLSX.utils.json_to_sheet(rowData, { header: COLUMNS.map((c) => c.header) })
   ws['!cols'] = COLUMNS.map((c) => ({ wch: c.width }))
   ws['!freeze'] = { xSplit: 0, ySplit: 1 }
+
   const numColIndices = COLUMNS.map((c, i) => (c.type === 'number' ? i : -1)).filter((i) => i >= 0)
   applyNumFmt(ws, numColIndices, 1)
+
+  // Attach hyperlinks to the Receipt Link column
+  if (linkColIdx >= 0) {
+    const getLinkUrl = COLUMNS[linkColIdx].get
+    receipts.forEach((r, rowIdx) => {
+      const url = getLinkUrl(r)
+      if (!url) return
+      const ref = XLSX.utils.encode_cell({ r: rowIdx + 1, c: linkColIdx })
+      if (ws[ref]) ws[ref].l = { Target: url, Tooltip: 'View receipt in Google Drive' }
+    })
+  }
+
   return ws
 }
 
