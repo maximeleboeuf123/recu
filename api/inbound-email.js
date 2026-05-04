@@ -1,6 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { getServiceClient } from './lib/auth.js'
 import { getValidToken, uploadFileToDrive } from './lib/driveClient.js'
+import {
+  EXTRACT_PROMPT,
+  validateExtracted,
+  generateFilename,
+  findPatternMatch,
+  applyTaxCalculations,
+} from './lib/extractUtils.js'
 
 const RATE_LIMIT_EMAIL_PER_HOUR = 20
 const ALLOWED_MIME = new Set([
@@ -8,30 +15,6 @@ const ALLOWED_MIME = new Set([
 ])
 const MIN_IMAGE_BYTES = 4096 // skip tiny images (logos/signatures)
 
-const EXTRACT_PROMPT = `Extract all data from this receipt or invoice:
-{
-  "vendor": "company or person name",
-  "invoice_date": "YYYY-MM-DD or null",
-  "invoice_number": "reference number or null",
-  "description": "one sentence describing the expense",
-  "keyword": "single most meaningful word from description",
-  "subtotal": number or null,
-  "gst": number or null,
-  "qst": number or null,
-  "hst": number or null,
-  "total": number or null,
-  "vendor_gst_number": "RT-XXXXXXXXX format or null",
-  "vendor_qst_number": "XXXXXXXXXX TQ XXXX format or null",
-  "vendor_neq": "10 digit number or null",
-  "vendor_bn": "9 digit number or null",
-  "payment_method": "cash|visa|mastercard|amex|debit|other or null",
-  "confidence": {
-    "vendor": "high/medium/low",
-    "invoice_date": "high/medium/low",
-    "total": "high/medium/low",
-    "overall": "high/medium/low"
-  }
-}`
 
 function parseBody(req) {
   return new Promise((resolve, reject) => {
@@ -48,31 +31,6 @@ function extractEmail(from) {
   return match?.[1]?.toLowerCase() ?? null
 }
 
-function normalizeVendor(name) {
-  return (name || '')
-    .toLowerCase()
-    .replace(/[.,'\-&]/g, '')
-    .replace(/\b(inc|ltd|ltée|ltee|corp|llc|co)\b/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function fuzzyMatch(a, b) {
-  if (!a || !b) return false
-  if (a === b) return true
-  if (a.length < 5 || b.length < 5) return false
-  return a.includes(b) || b.includes(a)
-}
-
-function generateFilename(extracted, subject) {
-  const dateStr = extracted.invoice_date || new Date().toISOString().slice(0, 10)
-  const vendorSafe = (extracted.vendor || subject || 'Email')
-    .replace(/[^a-zA-Z0-9\s\-éàèùâêîôûçÉÀÈÙÂÊÎÔÛÇ]/g, '')
-    .slice(0, 40)
-    .trim()
-  const keyword = extracted.keyword || 'email'
-  return `${dateStr} - ${vendorSafe} - ${keyword}`
-}
 
 function stripHtml(html) {
   return (html || '')
@@ -242,7 +200,7 @@ async function _handler(req, res) {
     })
     let raw = message.content[0].text.trim()
     if (raw.startsWith('```')) raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
-    extracted = JSON.parse(raw)
+    extracted = validateExtracted(JSON.parse(raw))
   } catch (e) {
     console.error('Email extraction error:', e?.message)
     // Graceful fallback — still create a pending receipt so user can fill it in
@@ -253,31 +211,10 @@ async function _handler(req, res) {
     }
   }
 
-  // Post-process taxes
-  const confidenceScores = { ...(extracted.confidence || {}) }
-  const sub = extracted.subtotal
-  if (sub != null && extracted.gst == null) {
-    extracted.gst = Math.round(sub * 0.05 * 100) / 100
-    confidenceScores.gst_source = 'calculated'
-  } else {
-    confidenceScores.gst_source = 'extracted'
-  }
-  if (sub != null && extracted.qst == null) {
-    extracted.qst = Math.round(sub * 0.09975 * 100) / 100
-    confidenceScores.qst_source = 'calculated'
-  } else {
-    confidenceScores.qst_source = 'extracted'
-  }
+  const confidenceScores = applyTaxCalculations(extracted)
 
-  // Pattern matching
   const { data: patterns } = await serviceClient.from('patterns').select('*').eq('user_id', userId)
-  let patternMatch = null
-  if (patterns?.length) {
-    const nv = normalizeVendor(extracted.vendor)
-    for (const p of patterns) {
-      if (fuzzyMatch(normalizeVendor(p.vendor_pattern), nv)) { patternMatch = p; break }
-    }
-  }
+  const patternMatch = findPatternMatch(patterns, extracted.vendor)
 
   const filename = generateFilename(extracted, Subject)
   const ext = mimeType === 'application/pdf' ? '.pdf' : mimeType.startsWith('image/') ? '.jpg' : ''

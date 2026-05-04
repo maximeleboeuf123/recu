@@ -3,11 +3,14 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
 const ReceiptsContext = createContext(null)
+const PAGE_SIZE = 500
 
 export function ReceiptsProvider({ children }) {
   const { session } = useAuth()
   const [receipts, setReceipts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [hasMore, setHasMore] = useState(false)
+  const [channelKey, setChannelKey] = useState(0)
 
   const userId = session?.user?.id
 
@@ -25,8 +28,10 @@ export function ReceiptsProvider({ children }) {
       .eq('user_id', userId)
       .neq('status', 'deleted')
       .order('created_at', { ascending: false })
+      .limit(PAGE_SIZE)
       .then(({ data }) => {
         setReceipts(data || [])
+        setHasMore((data?.length ?? 0) >= PAGE_SIZE)
         setLoading(false)
       })
   }, [userId])
@@ -39,10 +44,36 @@ export function ReceiptsProvider({ children }) {
       .eq('user_id', userId)
       .neq('status', 'deleted')
       .order('created_at', { ascending: false })
+      .limit(PAGE_SIZE)
       .then(({ data }) => {
-        if (data) setReceipts(data)
+        if (data) {
+          setReceipts(data)
+          setHasMore(data.length >= PAGE_SIZE)
+        }
       })
   }, [userId])
+
+  const loadMore = useCallback(() => {
+    if (!userId || !hasMore) return Promise.resolve()
+    const oldest = receipts[receipts.length - 1]?.created_at
+    if (!oldest) return Promise.resolve()
+    return supabase
+      .from('receipts')
+      .select('*')
+      .eq('user_id', userId)
+      .neq('status', 'deleted')
+      .order('created_at', { ascending: false })
+      .lt('created_at', oldest)
+      .limit(PAGE_SIZE)
+      .then(({ data }) => {
+        if (data?.length) {
+          setReceipts((prev) => [...prev, ...data])
+          setHasMore(data.length >= PAGE_SIZE)
+        } else {
+          setHasMore(false)
+        }
+      })
+  }, [userId, hasMore, receipts])
 
   // Re-fetch when the tab becomes visible again. Delay 800ms so the network
   // has time to wake before we fire the request (mobile backgrounding).
@@ -64,7 +95,7 @@ export function ReceiptsProvider({ children }) {
     if (!userId) return
 
     const channel = supabase
-      .channel(`receipts:${userId}`)
+      .channel(`receipts:${userId}:${channelKey}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'receipts', filter: `user_id=eq.${userId}` },
@@ -80,10 +111,15 @@ export function ReceiptsProvider({ children }) {
           }
         },
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          refresh()
+          setTimeout(() => setChannelKey((k) => k + 1), 5000)
+        }
+      })
 
     return () => supabase.removeChannel(channel)
-  }, [userId])
+  }, [userId, channelKey, refresh])
 
   const confirmReceipt = useCallback(async (id, data) => {
     setReceipts((prev) => prev.map((r) => r.id === id ? { ...r, ...data, status: 'confirmed' } : r))
@@ -238,12 +274,14 @@ export function ReceiptsProvider({ children }) {
         pendingReceipts,
         pendingCount: pendingReceipts.length,
         loading,
+        hasMore,
         confirmReceipt,
         updateReceipt,
         deleteReceipt,
         duplicateReceipt,
         createRecurringEntry,
         refresh,
+        loadMore,
       }}
     >
       {children}

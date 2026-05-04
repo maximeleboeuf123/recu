@@ -2,6 +2,10 @@ const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token'
 const DRIVE_API = 'https://www.googleapis.com/drive/v3'
 const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3'
 
+function escapeDriveQuery(str) {
+  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+}
+
 export async function getValidToken(userId, serviceClient) {
   const { data: row } = await serviceClient
     .from('drive_tokens')
@@ -103,7 +107,7 @@ export async function deleteFile(accessToken, fileId) {
 
 export async function findOrCreateFolder(accessToken, name, parentId) {
   const q = encodeURIComponent(
-    `'${parentId}' in parents and name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+    `'${parentId}' in parents and name='${escapeDriveQuery(name)}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
   )
   const res = await fetch(`${DRIVE_API}/files?q=${q}&fields=files(id,name)`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -114,7 +118,7 @@ export async function findOrCreateFolder(accessToken, name, parentId) {
 }
 
 export async function findFilesByName(accessToken, name, folderId) {
-  const q = encodeURIComponent(`'${folderId}' in parents and name='${name}' and trashed=false`)
+  const q = encodeURIComponent(`'${folderId}' in parents and name='${escapeDriveQuery(name)}' and trashed=false`)
   const res = await fetch(`${DRIVE_API}/files?q=${q}&fields=files(id)`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
