@@ -126,6 +126,11 @@ export default function ExportPage() {
       : accountsWithCategories.flatMap((a) => a.categories.map((c) => c.name))
   }, [accountsWithCategories, filters.account])
 
+  const accountsInExport = useMemo(() => {
+    const seen = new Set(exportList.map((r) => r.labels?.property || ''))
+    return [...seen].filter(Boolean).sort()
+  }, [exportList])
+
   const handleExport = async () => {
     if (!exportList.length || !filename.trim()) return
     setExporting(true)
@@ -366,6 +371,13 @@ export default function ExportPage() {
               {lang === 'en' ? 'pending' : 'en attente'}
               {periodLabel ? ` · ${periodLabel}` : ''}
             </p>
+            {accountsInExport.length > 1 && (
+              <p className="text-xs text-primary font-medium">
+                {lang === 'en'
+                  ? `${accountsInExport.length} files will be created — one per account`
+                  : `${accountsInExport.length} fichiers seront créés — un par compte`}
+              </p>
+            )}
           </div>
 
           {/* Format */}
@@ -405,8 +417,8 @@ export default function ExportPage() {
             </div>
             <p className="text-xs text-muted mt-1.5">
               {lang === 'en'
-                ? 'Saved to Récu/_Exports in your Drive. Same filename overwrites the previous file.'
-                : 'Enregistré dans Récu/_Exports de votre Drive. Un même nom remplace le fichier précédent.'}
+                ? 'Saved to Récu/{Account}/_Exports in your Drive. Same filename overwrites the previous file.'
+                : 'Enregistré dans Récu/{Compte}/_Exports de votre Drive. Un même nom remplace le fichier précédent.'}
             </p>
           </section>
 
@@ -420,24 +432,37 @@ export default function ExportPage() {
           )}
 
           {/* Success */}
-          {result && (
-            <div className="bg-surface border border-border rounded-[8px] p-4 flex items-center gap-3">
-              <CheckCircle size={18} className="text-success flex-shrink-0" />
-              <div className="flex-1 min-w-0">
+          {result?.files?.length > 0 && (
+            <div className="bg-surface border border-border rounded-[8px] p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-success flex-shrink-0" />
                 <p className="text-sm font-medium text-[#1A1A18]">
-                  {lang === 'en' ? 'Exported successfully' : 'Exporté avec succès'}
+                  {lang === 'en'
+                    ? `${result.files.length} file${result.files.length !== 1 ? 's' : ''} exported`
+                    : `${result.files.length} fichier${result.files.length !== 1 ? 's' : ''} exporté${result.files.length !== 1 ? 's' : ''}`}
                 </p>
-                <p className="text-xs text-muted truncate">{result.filename}</p>
               </div>
-              <a
-                href={result.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-shrink-0 flex items-center gap-1 text-xs text-primary font-medium hover:underline"
-              >
-                <ExternalLink size={13} />
-                {lang === 'en' ? 'Open' : 'Ouvrir'}
-              </a>
+              <div className="space-y-2">
+                {result.files.map((f) => (
+                  <div key={f.filename} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      {f.account && (
+                        <p className="text-xs font-semibold text-[#1A1A18] truncate">{f.account}</p>
+                      )}
+                      <p className="text-xs text-muted truncate">{f.filename}</p>
+                    </div>
+                    <a
+                      href={f.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+                    >
+                      <ExternalLink size={13} />
+                      {lang === 'en' ? 'Open' : 'Ouvrir'}
+                    </a>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

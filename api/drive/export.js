@@ -215,39 +215,63 @@ export default async function handler(req, res) {
       .single()
     if (!userData?.drive_folder_id) return res.status(400).json({ error: 'drive_not_connected' })
 
-    // Find or create _Exports folder
-    const exportFolder = await findOrCreateFolder(accessToken, '_Exports', userData.drive_folder_id)
-
-    // Build final filename with extension
     const base = filename.trim().replace(/\.(csv|xlsx)$/i, '')
     const ext = format === 'xlsx' ? '.xlsx' : '.csv'
-    const driveFilename = `${base}${ext}`
+    const mimeType = format === 'xlsx'
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'text/csv'
 
-    // Overwrite: delete any existing files with the same name
-    const existing = await findFilesByName(accessToken, driveFilename, exportFolder.id)
-    await Promise.all(existing.map((f) => deleteFile(accessToken, f.id).catch(() => {})))
-
-    // Generate file buffer
-    let fileBuffer, mimeType
-    if (format === 'xlsx') {
-      fileBuffer = generateXLSX(receipts, period)
-      mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    } else {
-      const csv = generateCSV(receipts)
-      // UTF-8 BOM so Excel opens it correctly
-      fileBuffer = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(csv, 'utf-8')])
-      mimeType = 'text/csv'
+    // Group receipts by account
+    const groups = {}
+    for (const r of receipts) {
+      const acc = r.labels?.property || ''
+      if (!groups[acc]) groups[acc] = []
+      groups[acc].push(r)
     }
 
-    const uploaded = await uploadFileToDrive(
-      accessToken,
-      driveFilename,
-      mimeType,
-      fileBuffer.toString('base64'),
-      exportFolder.id,
-    )
+    const accountNames = Object.keys(groups).sort((a, b) => {
+      if (!a) return 1
+      if (!b) return -1
+      return a.localeCompare(b)
+    })
+    const multiAccount = accountNames.length > 1
 
-    return res.status(200).json({ fileUrl: uploaded.webViewLink, filename: driveFilename })
+    const files = []
+
+    for (const accName of accountNames) {
+      const accReceipts = groups[accName]
+
+      // Resolve _Exports folder: Récu/{AccountName}/_Exports or Récu/_Exports
+      let parentId = userData.drive_folder_id
+      if (accName) {
+        const accFolder = await findOrCreateFolder(accessToken, accName, userData.drive_folder_id)
+        parentId = accFolder.id
+      }
+      const exportFolder = await findOrCreateFolder(accessToken, '_Exports', parentId)
+
+      const safeName = accName.replace(/[^a-zA-Z0-9\s\-éàèùâêîôûçÉÀÈÙÂÊÎÔÛÇ]/g, '').trim()
+      const driveFilename = multiAccount && safeName ? `${base} - ${safeName}${ext}` : `${base}${ext}`
+
+      // Overwrite: delete any existing file with the same name
+      const existing = await findFilesByName(accessToken, driveFilename, exportFolder.id)
+      await Promise.all(existing.map((f) => deleteFile(accessToken, f.id).catch(() => {})))
+
+      let fileBuffer
+      if (format === 'xlsx') {
+        fileBuffer = generateXLSX(accReceipts, period)
+      } else {
+        const csv = generateCSV(accReceipts)
+        fileBuffer = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(csv, 'utf-8')])
+      }
+
+      const uploaded = await uploadFileToDrive(
+        accessToken, driveFilename, mimeType, fileBuffer.toString('base64'), exportFolder.id,
+      )
+
+      files.push({ account: accName || '', filename: driveFilename, fileUrl: uploaded.webViewLink })
+    }
+
+    return res.status(200).json({ files })
   } catch (e) {
     console.error('Export error:', e?.message)
     return res.status(500).json({ error: 'export_failed' })
