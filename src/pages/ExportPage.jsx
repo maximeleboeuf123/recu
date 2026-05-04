@@ -422,8 +422,8 @@ export default function ExportPage() {
             </p>
             <p className="text-xs text-muted mt-1">
               {lang === 'en'
-                ? 'One file per account — each saved to its own folder so you can share a folder directly with your accountant.'
-                : 'Un fichier par compte — chacun dans son propre dossier pour partager facilement avec votre comptable.'}
+                ? 'One file per account will be exported, each saved to its own dedicated folder.'
+                : 'Un fichier par compte sera exporté, chacun enregistré dans son dossier dédié.'}
             </p>
           </section>
 
