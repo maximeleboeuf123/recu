@@ -156,7 +156,7 @@ async function _handler(req, res) {
 
   const serviceClient = getServiceClient()
 
-  // Check aliases table first (fast), then fall back to primary auth email
+  // Check aliases table first, then fall back to primary auth email via RPC
   let userId
   const { data: aliasRow } = await serviceClient
     .from('user_email_aliases')
@@ -167,8 +167,9 @@ async function _handler(req, res) {
   if (aliasRow?.user_id) {
     userId = aliasRow.user_id
   } else {
-    const { data: { users: authUsers } } = await serviceClient.auth.admin.listUsers({ perPage: 1000 })
-    userId = authUsers?.find(u => u.email?.toLowerCase() === senderEmail)?.id
+    const { data: rpcId } = await serviceClient
+      .rpc('get_user_id_by_email', { lookup_email: senderEmail })
+    userId = rpcId
   }
 
   if (!userId) return res.status(200).end() // unknown sender — silently ack
