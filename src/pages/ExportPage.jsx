@@ -420,6 +420,11 @@ export default function ExportPage() {
                 ? 'Saved to Récu/{Account}/_Exports in your Drive. Same filename overwrites the previous file.'
                 : 'Enregistré dans Récu/{Compte}/_Exports de votre Drive. Un même nom remplace le fichier précédent.'}
             </p>
+            <p className="text-xs text-muted mt-1">
+              {lang === 'en'
+                ? 'One file per account — each saved to its own folder so you can share a folder directly with your accountant.'
+                : 'Un fichier par compte — chacun dans son propre dossier pour partager facilement avec votre comptable.'}
+            </p>
           </section>
 
           {/* Error */}
