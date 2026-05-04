@@ -67,13 +67,13 @@ export default function LandingPage() {
 
         <h1 className="text-3xl font-bold text-[#1A1A18] tracking-tight leading-tight max-w-sm">
           {lang === 'fr'
-            ? 'Gestion de reçus pour travailleurs autonomes canadiens'
-            : 'Receipt management for Canadian freelancers & small businesses'}
+            ? 'Fini les reçus éparpillés. Tout organisé, classé, prêt pour les impôts.'
+            : 'Stop losing receipts. Get everything organized, filed, and ready for tax time.'}
         </h1>
-        <p className="text-muted mt-3 leading-relaxed max-w-xs text-sm">
+        <p className="text-muted mt-3 leading-relaxed max-w-sm text-sm">
           {lang === 'fr'
-            ? "L'IA extrait vos données. Google Drive classe vos documents. Un XLSX prêt pour votre comptable."
-            : 'AI extracts your data. Google Drive files your documents. One XLSX for your accountant.'}
+            ? "Pour les particuliers, couples, travailleurs autonomes et petites entreprises qui veulent leurs reçus organisés, conservés et compilés dans leur propre Google Drive."
+            : 'For individuals, couples, freelancers, and small businesses who want their receipts organized, stored, tracked, and compiled — in their own Google Drive.'}
         </p>
 
         <button
