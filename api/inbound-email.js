@@ -155,10 +155,23 @@ async function _handler(req, res) {
   if (!senderEmail) return res.status(200).end()
 
   const serviceClient = getServiceClient()
-  const { data: { users: authUsers } } = await serviceClient.auth.admin.listUsers({ perPage: 1000 })
-  const authUser = authUsers?.find(u => u.email?.toLowerCase() === senderEmail)
-  if (!authUser) return res.status(200).end() // unknown sender — silently ack
-  const userId = authUser.id
+
+  // Check aliases table first (fast), then fall back to primary auth email
+  let userId
+  const { data: aliasRow } = await serviceClient
+    .from('user_email_aliases')
+    .select('user_id')
+    .eq('email', senderEmail)
+    .maybeSingle()
+
+  if (aliasRow?.user_id) {
+    userId = aliasRow.user_id
+  } else {
+    const { data: { users: authUsers } } = await serviceClient.auth.admin.listUsers({ perPage: 1000 })
+    userId = authUsers?.find(u => u.email?.toLowerCase() === senderEmail)?.id
+  }
+
+  if (!userId) return res.status(200).end() // unknown sender — silently ack
 
   // MessageID dedup
   if (MessageID) {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Layers, RefreshCw, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync, Copy, Check } from 'lucide-react'
+import { Layers, RefreshCw, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync, Copy, Check, Plus, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useDrive } from '../hooks/useDrive'
 import LanguageToggle from '../components/LanguageToggle'
@@ -14,6 +14,10 @@ export default function SettingsPage() {
   const [toast, setToast] = useState(null)
   const [inboxEmail, setInboxEmail] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [aliases, setAliases] = useState([])
+  const [newAlias, setNewAlias] = useState('')
+  const [aliasError, setAliasError] = useState(null)
+  const [aliasLoading, setAliasLoading] = useState(false)
 
   const user = session?.user
   const email = user?.email ?? ''
@@ -44,6 +48,47 @@ export default function SettingsPage() {
       .then(d => { if (d?.inboxEmail) setInboxEmail(d.inboxEmail) })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!session?.access_token) return
+    fetch('/api/email-aliases', { headers: { Authorization: `Bearer ${session.access_token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(setAliases)
+      .catch(() => {})
+  }, [session])
+
+  const addAlias = async () => {
+    const email = newAlias.trim().toLowerCase()
+    if (!email || !email.includes('@')) return
+    setAliasLoading(true)
+    setAliasError(null)
+    try {
+      const res = await fetch('/api/email-aliases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAliasError(data.error === 'already_exists'
+          ? (lang === 'fr' ? 'Adresse déjà enregistrée' : 'Address already added')
+          : (lang === 'fr' ? 'Erreur' : 'Error'))
+      } else {
+        setAliases(prev => [...prev, { email, created_at: new Date().toISOString() }])
+        setNewAlias('')
+      }
+    } catch { setAliasError(lang === 'fr' ? 'Erreur' : 'Error') }
+    finally { setAliasLoading(false) }
+  }
+
+  const removeAlias = async (email) => {
+    await fetch('/api/email-aliases', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ email }),
+    })
+    setAliases(prev => prev.filter(a => a.email !== email))
+  }
 
   const handleCopyInbox = () => {
     if (!inboxEmail) return
@@ -89,29 +134,79 @@ export default function SettingsPage() {
           <ChevronRight size={15} className="text-muted" />
         </Link>
         <Row icon={RefreshCw} label={t('settings.recurring')} />
-        <div className="flex items-start px-4 py-3.5 gap-3">
+        <div className="flex items-center justify-between px-4 py-3.5">
+          <span className="text-[#1A1A18] font-medium text-sm">{t('settings.language')}</span>
+          <LanguageToggle session={session} />
+        </div>
+      </div>
+
+      {/* Email inbox */}
+      <div className="bg-surface rounded-[8px] border border-border p-4 space-y-4">
+        <div className="flex items-start gap-3">
           <Mail size={17} className="text-muted flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-[#1A1A18]">{t('settings.email_inbox')}</p>
-            {inboxEmail ? (
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-xs text-muted truncate">{inboxEmail}</p>
+            <p className="text-xs text-muted mt-0.5 leading-snug">
+              {lang === 'fr'
+                ? 'Transférez vos reçus à cette adresse depuis n\'importe quelle adresse approuvée.'
+                : 'Forward receipts to this address from any approved sender.'}
+            </p>
+            {inboxEmail && (
+              <div className="flex items-center gap-2 mt-2 bg-background rounded-[6px] px-3 py-2 border border-border">
+                <p className="text-xs text-muted font-mono flex-1 truncate">{inboxEmail}</p>
                 <button
                   onClick={handleCopyInbox}
                   className="flex-shrink-0 p-0.5 text-muted hover:text-primary transition-colors"
-                  title={lang === 'en' ? 'Copy address' : 'Copier l\'adresse'}
+                  title={lang === 'en' ? 'Copy' : 'Copier'}
                 >
                   {copied ? <Check size={13} className="text-success" /> : <Copy size={13} />}
                 </button>
               </div>
-            ) : (
-              <p className="text-xs text-muted mt-0.5">{t('settings.email_inbox_sub')}</p>
             )}
           </div>
         </div>
-        <div className="flex items-center justify-between px-4 py-3.5">
-          <span className="text-[#1A1A18] font-medium text-sm">{t('settings.language')}</span>
-          <LanguageToggle session={session} />
+
+        <div className="border-t border-border pt-3 space-y-2">
+          <p className="text-xs text-muted uppercase tracking-wide font-medium">
+            {lang === 'fr' ? 'Expéditeurs approuvés' : 'Approved senders'}
+          </p>
+          {aliases.length === 0 && (
+            <p className="text-xs text-muted">
+              {lang === 'fr'
+                ? 'Aucun expéditeur — ajoutez votre adresse email.'
+                : 'No senders yet — add your email address.'}
+            </p>
+          )}
+          {aliases.map(a => (
+            <div key={a.email} className="flex items-center gap-2">
+              <p className="text-sm flex-1 truncate text-[#1A1A18]">{a.email}</p>
+              <button
+                onClick={() => removeAlias(a.email)}
+                className="flex-shrink-0 p-0.5 text-muted hover:text-error transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+          <div className="flex gap-2 pt-1">
+            <input
+              type="email"
+              value={newAlias}
+              onChange={e => { setNewAlias(e.target.value); setAliasError(null) }}
+              onKeyDown={e => e.key === 'Enter' && addAlias()}
+              placeholder={lang === 'fr' ? 'email@exemple.com' : 'email@example.com'}
+              className="flex-1 text-sm bg-background border border-border rounded-[6px] px-3 py-1.5 focus:outline-none focus:border-primary min-w-0"
+            />
+            <button
+              onClick={addAlias}
+              disabled={aliasLoading || !newAlias.trim()}
+              className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-sm bg-primary text-white rounded-[6px] font-medium disabled:opacity-50 active:scale-[0.97] transition-transform"
+            >
+              <Plus size={14} />
+              {lang === 'fr' ? 'Ajouter' : 'Add'}
+            </button>
+          </div>
+          {aliasError && <p className="text-xs text-error">{aliasError}</p>}
         </div>
       </div>
 
