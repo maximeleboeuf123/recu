@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Layers, RefreshCw, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync } from 'lucide-react'
+import { Layers, RefreshCw, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync, Copy, Check } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useDrive } from '../hooks/useDrive'
 import LanguageToggle from '../components/LanguageToggle'
@@ -12,6 +12,8 @@ export default function SettingsPage() {
   const { driveState, loading: driveLoading, refresh: refreshDrive } = useDrive()
   const [searchParams, setSearchParams] = useSearchParams()
   const [toast, setToast] = useState(null)
+  const [inboxEmail, setInboxEmail] = useState(null)
+  const [copied, setCopied] = useState(false)
 
   const user = session?.user
   const email = user?.email ?? ''
@@ -34,6 +36,21 @@ export default function SettingsPage() {
   const showToast = (msg) => {
     setToast(msg)
     setTimeout(() => setToast(null), 3500)
+  }
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.inboxEmail) setInboxEmail(d.inboxEmail) })
+      .catch(() => {})
+  }, [])
+
+  const handleCopyInbox = () => {
+    if (!inboxEmail) return
+    navigator.clipboard.writeText(inboxEmail).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
   }
 
   const dimensionsLabel = lang === 'en' ? 'Accounts & Categories' : 'Comptes et catégories'
@@ -72,7 +89,26 @@ export default function SettingsPage() {
           <ChevronRight size={15} className="text-muted" />
         </Link>
         <Row icon={RefreshCw} label={t('settings.recurring')} />
-        <Row icon={Mail} label={t('settings.email_inbox')} subtitle={t('settings.email_inbox_sub')} />
+        <div className="flex items-start px-4 py-3.5 gap-3">
+          <Mail size={17} className="text-muted flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-[#1A1A18]">{t('settings.email_inbox')}</p>
+            {inboxEmail ? (
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-xs text-muted truncate">{inboxEmail}</p>
+                <button
+                  onClick={handleCopyInbox}
+                  className="flex-shrink-0 p-0.5 text-muted hover:text-primary transition-colors"
+                  title={lang === 'en' ? 'Copy address' : 'Copier l\'adresse'}
+                >
+                  {copied ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted mt-0.5">{t('settings.email_inbox_sub')}</p>
+            )}
+          </div>
+        </div>
         <div className="flex items-center justify-between px-4 py-3.5">
           <span className="text-[#1A1A18] font-medium text-sm">{t('settings.language')}</span>
           <LanguageToggle session={session} />

@@ -264,7 +264,7 @@ async function _handler(req, res) {
     vendor_bn: extracted.vendor_bn,
     payment_method: extracted.payment_method || null,
     filename,
-    source: 'manual',
+    source: body.source || 'upload',
     extracted_raw: extracted,
     confidence_scores: confidenceScores,
     labels: patternMatch?.labels ?? {},

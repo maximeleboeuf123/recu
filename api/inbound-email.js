@@ -1,0 +1,335 @@
+import Anthropic from '@anthropic-ai/sdk'
+import { getServiceClient } from './lib/auth.js'
+import { getValidToken, uploadFileToDrive } from './lib/driveClient.js'
+
+const RATE_LIMIT_EMAIL_PER_HOUR = 20
+const ALLOWED_MIME = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf',
+])
+const MIN_IMAGE_BYTES = 4096 // skip tiny images (logos/signatures)
+
+const EXTRACT_PROMPT = `Extract all data from this receipt or invoice:
+{
+  "vendor": "company or person name",
+  "invoice_date": "YYYY-MM-DD or null",
+  "invoice_number": "reference number or null",
+  "description": "one sentence describing the expense",
+  "keyword": "single most meaningful word from description",
+  "subtotal": number or null,
+  "gst": number or null,
+  "qst": number or null,
+  "hst": number or null,
+  "total": number or null,
+  "vendor_gst_number": "RT-XXXXXXXXX format or null",
+  "vendor_qst_number": "XXXXXXXXXX TQ XXXX format or null",
+  "vendor_neq": "10 digit number or null",
+  "vendor_bn": "9 digit number or null",
+  "payment_method": "cash|visa|mastercard|amex|debit|other or null",
+  "confidence": {
+    "vendor": "high/medium/low",
+    "invoice_date": "high/medium/low",
+    "total": "high/medium/low",
+    "overall": "high/medium/low"
+  }
+}`
+
+function parseBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = ''
+    req.on('data', c => { data += c })
+    req.on('end', () => { try { resolve(JSON.parse(data)) } catch (e) { reject(e) } })
+    req.on('error', reject)
+  })
+}
+
+function extractEmail(from) {
+  if (!from) return null
+  const match = from.match(/<([^>]+)>/) || from.match(/([^\s<>]+@[^\s<>]+)/)
+  return match?.[1]?.toLowerCase() ?? null
+}
+
+function normalizeVendor(name) {
+  return (name || '')
+    .toLowerCase()
+    .replace(/[.,'\-&]/g, '')
+    .replace(/\b(inc|ltd|ltée|ltee|corp|llc|co)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function fuzzyMatch(a, b) {
+  if (!a || !b) return false
+  if (a === b) return true
+  if (a.length < 5 || b.length < 5) return false
+  return a.includes(b) || b.includes(a)
+}
+
+function generateFilename(extracted, subject) {
+  const dateStr = extracted.invoice_date || new Date().toISOString().slice(0, 10)
+  const vendorSafe = (extracted.vendor || subject || 'Email')
+    .replace(/[^a-zA-Z0-9\s\-éàèùâêîôûçÉÀÈÙÂÊÎÔÛÇ]/g, '')
+    .slice(0, 40)
+    .trim()
+  const keyword = extracted.keyword || 'email'
+  return `${dateStr} - ${vendorSafe} - ${keyword}`
+}
+
+function stripHtml(html) {
+  return (html || '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function pickBestAttachment(attachments) {
+  // Prefer PDFs; among images, prefer the largest (thumbnails/logos tend to be tiny)
+  const pdfs = attachments.filter(a => a.ContentType === 'application/pdf')
+  if (pdfs.length) return pdfs.sort((a, b) => (b.ContentLength || 0) - (a.ContentLength || 0))[0]
+  const images = attachments.filter(a => {
+    const bytes = a.ContentLength || Math.ceil((a.Content?.length || 0) * 3 / 4)
+    return bytes >= MIN_IMAGE_BYTES
+  })
+  const pool = images.length ? images : attachments
+  return pool.sort((a, b) => (b.ContentLength || 0) - (a.ContentLength || 0))[0]
+}
+
+async function sendReply(to, subject, receipt) {
+  const lines = [
+    'Your receipt has been captured and is pending review in Récu.',
+    '',
+    receipt.vendor ? `Vendor: ${receipt.vendor}` : null,
+    receipt.invoice_date ? `Date: ${receipt.invoice_date}` : null,
+    receipt.total != null ? `Total: $${receipt.total} CAD` : null,
+    '',
+    'Open Récu to review and confirm: https://monrecu.app/review',
+  ].filter(l => l !== null)
+
+  await fetch('https://api.postmarkapp.com/email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Postmark-Server-Token': process.env.POSTMARK_API_KEY,
+    },
+    body: JSON.stringify({
+      From: 'Récu <noreply@monrecu.app>',
+      To: to,
+      Subject: subject ? `Re: ${subject}` : 'Receipt captured — pending review',
+      TextBody: lines.join('\n'),
+    }),
+  })
+}
+
+export default async function handler(req, res) {
+  try { return await _handler(req, res) } catch (e) {
+    console.error('inbound-email unhandled:', e?.message, e?.stack)
+    if (!res.headersSent) res.status(200).end() // always ack to Postmark
+  }
+}
+
+async function _handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end()
+
+  // Verify webhook token
+  const token = req.query?.token
+  if (!token || token !== process.env.POSTMARK_WEBHOOK_TOKEN) return res.status(401).end()
+
+  // Parse body
+  let body
+  try {
+    if (req.body != null) {
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+    } else {
+      body = await parseBody(req)
+    }
+  } catch { return res.status(200).end() }
+
+  const { From, MessageID, Subject, TextBody, HtmlBody, Attachments = [] } = body || {}
+
+  // Look up user by sender email
+  const senderEmail = extractEmail(From)
+  if (!senderEmail) return res.status(200).end()
+
+  const serviceClient = getServiceClient()
+  const { data: { users: authUsers } } = await serviceClient.auth.admin.listUsers({ perPage: 1000 })
+  const authUser = authUsers?.find(u => u.email?.toLowerCase() === senderEmail)
+  if (!authUser) return res.status(200).end() // unknown sender — silently ack
+  const userId = authUser.id
+
+  // MessageID dedup
+  if (MessageID) {
+    const { count } = await serviceClient
+      .from('receipts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .contains('extracted_raw', { messageId: MessageID })
+    if ((count ?? 0) > 0) return res.status(200).end()
+  }
+
+  // Rate limit
+  const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString()
+  const { count: recentCount } = await serviceClient
+    .from('receipts')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('source', 'email')
+    .gte('created_at', oneHourAgo)
+  if ((recentCount ?? 0) >= RATE_LIMIT_EMAIL_PER_HOUR) return res.status(200).end()
+
+  // Select content for extraction
+  const validAttachments = Attachments.filter(a => ALLOWED_MIME.has(a.ContentType) && a.Content)
+  let fileBase64, mimeType, isTextFallback = false
+
+  if (validAttachments.length === 0) {
+    const text = TextBody || stripHtml(HtmlBody) || ''
+    if (!text.trim()) return res.status(200).end()
+    fileBase64 = Buffer.from(text.slice(0, 8000)).toString('base64')
+    mimeType = 'text/plain'
+    isTextFallback = true
+  } else {
+    const best = validAttachments.length === 1 ? validAttachments[0] : pickBestAttachment(validAttachments)
+    fileBase64 = best.Content
+    mimeType = best.ContentType
+  }
+
+  // Extract with Claude
+  const anthropic = new Anthropic()
+  let claudeContent
+
+  if (isTextFallback) {
+    const decoded = Buffer.from(fileBase64, 'base64').toString('utf8')
+    claudeContent = [{
+      type: 'text',
+      text: `Email subject: ${Subject || ''}\nFrom: ${senderEmail}\n\nEmail content:\n${decoded}\n\n${EXTRACT_PROMPT}`,
+    }]
+  } else if (mimeType === 'application/pdf') {
+    claudeContent = [
+      { type: 'document', source: { type: 'base64', media_type: mimeType, data: fileBase64 } },
+      { type: 'text', text: EXTRACT_PROMPT },
+    ]
+  } else {
+    claudeContent = [
+      { type: 'image', source: { type: 'base64', media_type: mimeType, data: fileBase64 } },
+      { type: 'text', text: EXTRACT_PROMPT },
+    ]
+  }
+
+  let extracted
+  try {
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      system: 'You are extracting data from a receipt or invoice for a Canadian small business expense tracking app. Return ONLY a valid JSON object — no markdown, no explanation. For missing fields use null. For amounts use numbers only.',
+      messages: [{ role: 'user', content: claudeContent }],
+    })
+    let raw = message.content[0].text.trim()
+    if (raw.startsWith('```')) raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+    extracted = JSON.parse(raw)
+  } catch (e) {
+    console.error('Email extraction error:', e?.message)
+    // Graceful fallback — still create a pending receipt so user can fill it in
+    extracted = {
+      vendor: null, invoice_date: null, total: null,
+      description: Subject || 'Email receipt',
+      confidence: { overall: 'low', vendor: 'low', invoice_date: 'low', total: 'low' },
+    }
+  }
+
+  // Post-process taxes
+  const confidenceScores = { ...(extracted.confidence || {}) }
+  const sub = extracted.subtotal
+  if (sub != null && extracted.gst == null) {
+    extracted.gst = Math.round(sub * 0.05 * 100) / 100
+    confidenceScores.gst_source = 'calculated'
+  } else {
+    confidenceScores.gst_source = 'extracted'
+  }
+  if (sub != null && extracted.qst == null) {
+    extracted.qst = Math.round(sub * 0.09975 * 100) / 100
+    confidenceScores.qst_source = 'calculated'
+  } else {
+    confidenceScores.qst_source = 'extracted'
+  }
+
+  // Pattern matching
+  const { data: patterns } = await serviceClient.from('patterns').select('*').eq('user_id', userId)
+  let patternMatch = null
+  if (patterns?.length) {
+    const nv = normalizeVendor(extracted.vendor)
+    for (const p of patterns) {
+      if (fuzzyMatch(normalizeVendor(p.vendor_pattern), nv)) { patternMatch = p; break }
+    }
+  }
+
+  const filename = generateFilename(extracted, Subject)
+  const ext = mimeType === 'application/pdf' ? '.pdf' : mimeType.startsWith('image/') ? '.jpg' : ''
+
+  const receiptRow = {
+    user_id: userId,
+    status: 'pending',
+    vendor: extracted.vendor,
+    invoice_date: extracted.invoice_date,
+    invoice_number: extracted.invoice_number,
+    description: extracted.description,
+    keyword: extracted.keyword,
+    subtotal: extracted.subtotal,
+    gst: extracted.gst,
+    qst: extracted.qst,
+    hst: extracted.hst,
+    total: extracted.total,
+    currency: 'CAD',
+    vendor_gst_number: extracted.vendor_gst_number,
+    vendor_qst_number: extracted.vendor_qst_number,
+    vendor_neq: extracted.vendor_neq,
+    vendor_bn: extracted.vendor_bn,
+    payment_method: extracted.payment_method || null,
+    filename: filename + ext,
+    source: 'email',
+    extracted_raw: { ...extracted, messageId: MessageID, emailSubject: Subject, emailFrom: senderEmail },
+    confidence_scores: confidenceScores,
+    labels: patternMatch?.labels ?? {},
+  }
+
+  const { data: receipt, error: dbError } = await serviceClient
+    .from('receipts').insert(receiptRow).select().single()
+
+  if (dbError) {
+    console.error('DB insert error:', dbError)
+    return res.status(200).end()
+  }
+
+  // Drive upload — best-effort, only for real file attachments
+  if (!isTextFallback && fileBase64) {
+    try {
+      const { data: userRow } = await serviceClient
+        .from('users').select('drive_folder_id, drive_inbox_id, drive_token_active').eq('id', userId).single()
+
+      const targetFolderId = userRow?.drive_inbox_id || userRow?.drive_folder_id
+      if (targetFolderId && userRow?.drive_token_active !== false) {
+        const driveToken = await getValidToken(userId, serviceClient)
+        if (driveToken) {
+          const driveResult = await uploadFileToDrive(
+            driveToken, filename + ext, mimeType, fileBase64, targetFolderId,
+          )
+          if (driveResult?.id) {
+            await serviceClient.from('receipts').update({ drive_file_id: driveResult.id }).eq('id', receipt.id)
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Drive upload error:', e?.message)
+    }
+  }
+
+  // Confirmation reply — only if POSTMARK_API_KEY is configured
+  if (process.env.POSTMARK_API_KEY) {
+    try { await sendReply(senderEmail, Subject, receipt) }
+    catch (e) { console.error('Reply email error:', e?.message) }
+  }
+
+  return res.status(200).end()
+}

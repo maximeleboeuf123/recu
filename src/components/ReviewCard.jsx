@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Pencil, AlertTriangle, Info, Plus, ChevronDown, FileText, X, Settings, Check, Paperclip } from 'lucide-react'
+import { Pencil, AlertTriangle, Info, Plus, ChevronDown, FileText, X, Settings, Check, Paperclip, Mail, PenLine } from 'lucide-react'
 import RecurringFields from './RecurringFields'
 import DimensionRow from './DimensionRow'
 import { useDimensions } from '../context/DimensionsContext'
@@ -152,8 +152,15 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
     onConfirm?.(receipt.id, buildData(), null, patternPrompt)
   }
 
+  const overall = scores.overall || conf.overall
+  const confBorder = overall === 'low'
+    ? ' border-l-4 border-l-red-400'
+    : overall === 'medium'
+    ? ' border-l-4 border-l-amber-400'
+    : ''
+
   return (
-    <div className="bg-surface border border-border rounded-[8px] overflow-hidden">
+    <div className={`bg-surface border border-border rounded-[8px] overflow-hidden${confBorder}`}>
       {/* Document viewer — rendered via portal so it escapes any overflow-hidden parent */}
       {viewingDoc && receipt.drive_file_id && createPortal(
         <div className="fixed inset-0 bg-black z-[400] flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
@@ -238,6 +245,18 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
             {fields.invoice_date || '—'}
             {fields.invoice_number ? ` · ${fields.invoice_number}` : ''}
           </p>
+          {receipt.source === 'email' && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded mt-1">
+              <Mail size={9} strokeWidth={2} />
+              Email
+            </span>
+          )}
+          {receipt.source === 'manual' && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-muted bg-border/40 px-1.5 py-0.5 rounded mt-1">
+              <PenLine size={9} strokeWidth={2} />
+              Manual
+            </span>
+          )}
         </div>
         <p className="text-lg font-bold text-[#1A1A18] flex-shrink-0">
           {fields.total != null && fields.total !== ''
