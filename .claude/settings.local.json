@@ -10,7 +10,26 @@
       "Bash(git commit -m 'fix: safe area insets on CameraCapture — Terminer button now reachable *)",
       "Bash(git commit *)",
       "Bash(node -e \"require\\('xlsx'\\); console.log\\('ok'\\)\")",
-      "Bash(node -e \"import\\('xlsx'\\).then\\(\\(\\)=>console.log\\('ok'\\)\\).catch\\(e=>console.log\\('fail',e.message\\)\\)\")"
+      "Bash(node -e \"import\\('xlsx'\\).then\\(\\(\\)=>console.log\\('ok'\\)\\).catch\\(e=>console.log\\('fail',e.message\\)\\)\")",
+      "Bash(git config *)",
+      "Bash(grep -v \"^\\\\s*//\")",
+      "Bash(npx vercel *)",
+      "Bash(npx --yes vercel build)",
+      "Bash(vercel login *)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const d=JSON.parse\\(fs.readFileSync\\('/c/Users/Maxim/AppData/Roaming/com.vercel.cli/Data/auth.json','utf8'\\)\\);console.log\\(d.token\\)\")",
+      "Bash(curl -s -H 'Authorization: Bearer __TRACKED_VAR__' 'https://api.vercel.com/v13/deployments/dpl_7BWr8LSzhQYCGYWgCwt97GLXYPb6/events?builds=1&limit=200')",
+      "Bash(node -e ' *)",
+      "Bash(node -p ' *)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const d=JSON.parse\\(fs.readFileSync\\(process.env.APPDATA+'/com.vercel.cli/Data/auth.json','utf8'\\)\\);console.log\\(d.token\\)\")",
+      "Bash(curl -s -H 'Authorization: Bearer __TRACKED_VAR__' 'https://api.vercel.com/v3/deployments/dpl_BFbLz2zFsLeLtTJr4785YwcArmeA/events?limit=100')",
+      "Bash(curl -s -H 'Authorization: Bearer __TRACKED_VAR__' https://api.vercel.com/v2/teams/team_PhDpXHIkAOa433D3ykeFNlTf)",
+      "Bash(curl -s -H 'Authorization: Bearer __TRACKED_VAR__' https://api.vercel.com/v13/deployments/dpl_BFbLz2zFsLeLtTJr4785YwcArmeA)",
+      "Bash(curl -s 'https://api.vercel.com/v6/deployments?projectId=prj_uaaNQJv1uWk5ii5mzPhIx3yfRtdi&teamId=team_PhDpXHIkAOa433D3ykeFNlTf&limit=3' -H 'Authorization: Bearer vca_35nKlAsLfZ5KlDcvBOQzmWAg5fJlL276bmqI4vhV0rGaJAnF8T0qr9jG')",
+      "Bash(node -e \"const d=require\\('/tmp/deps.json'\\); const deps=d.deployments||[]; deps.forEach\\(dep=>console.log\\(dep.uid,dep.state,dep.created\\)\\);\")",
+      "Bash(curl -s 'https://api.vercel.com/v6/deployments?projectId=prj_uaaNQJv1uWk5ii5mzPhIx3yfRtdi&teamId=team_PhDpXHIkAOa433D3ykeFNlTf&limit=3' -H 'Authorization: Bearer vca_35nKlAsLfZ5KlDcvBOQzmWAg5fJlL276bmqI4vhV0rGaJAnF8T0qr9jG' -o C:/Users/Maxim/deps.json)",
+      "Bash(node -e \"const d=require\\('C:/Users/Maxim/deps.json'\\); const deps=d.deployments||[]; deps.forEach\\(dep=>console.log\\(dep.uid,dep.state,dep.created\\)\\);\")",
+      "Bash(curl -s 'https://api.vercel.com/v3/deployments/dpl_5ydqLWxY5JzbLjpFpooKU2CuHAJY/events?teamId=team_PhDpXHIkAOa433D3ykeFNlTf&limit=100&direction=backward' -H 'Authorization: Bearer vca_35nKlAsLfZ5KlDcvBOQzmWAg5fJlL276bmqI4vhV0rGaJAnF8T0qr9jG' -o C:/Users/Maxim/events.json)",
+      "Bash(git remote *)"
     ]
   }
 }

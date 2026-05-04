@@ -114,21 +114,9 @@ async function _handler(req, res) {
 
   const serviceClient = getServiceClient()
 
-  // Check aliases table first, then fall back to primary auth email via RPC
-  let userId
-  const { data: aliasRow } = await serviceClient
-    .from('user_email_aliases')
-    .select('user_id')
-    .eq('email', senderEmail)
-    .maybeSingle()
-
-  if (aliasRow?.user_id) {
-    userId = aliasRow.user_id
-  } else {
-    const { data: rpcId } = await serviceClient
-      .rpc('get_user_id_by_email', { lookup_email: senderEmail })
-    userId = rpcId
-  }
+  // Route by primary Récu account email only (aliases removed to prevent routing conflicts)
+  const { data: userId } = await serviceClient
+    .rpc('get_user_id_by_email', { lookup_email: senderEmail })
 
   if (!userId) return res.status(200).end() // unknown sender — silently ack
 

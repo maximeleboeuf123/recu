@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Upload, ClipboardList, BookOpen, FileSpreadsheet, Cloud } from 'lucide-react'
+import { Upload, ClipboardList, BookOpen, FileSpreadsheet, Cloud, Users } from 'lucide-react'
 import { useReceipts } from '../hooks/useReceipts'
+import { useShares } from '../hooks/useShares'
 import { daysAgo } from '../lib/utils'
 
 export default function HomePage() {
@@ -9,6 +10,7 @@ export default function HomePage() {
   const lang = i18n.language?.startsWith('fr') ? 'fr' : 'en'
   const navigate = useNavigate()
   const { receipts, pendingCount } = useReceipts()
+  const { received: sharedAccounts } = useShares()
 
   const now = new Date()
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -109,6 +111,37 @@ export default function HomePage() {
           ))}
         </div>
       </div>
+
+      {/* Shared accounts */}
+      {sharedAccounts.length > 0 && (
+        <div>
+          <h2 className="text-xs text-muted uppercase tracking-wide font-medium mb-3 flex items-center gap-1.5">
+            <Users size={12} />
+            {lang === 'fr' ? 'Comptes partagés avec moi' : 'Shared with me'}
+          </h2>
+          <div className="space-y-2">
+            {sharedAccounts.map(s => (
+              <button
+                key={s.id}
+                onClick={() => navigate(`/shared/${s.id}`)}
+                className="w-full flex items-center justify-between bg-surface border border-border rounded-[8px] px-4 py-3 hover:border-primary/40 hover:bg-primary/5 transition-colors active:scale-[0.99] text-left"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-[#1A1A18] truncate">{s.account_name}</p>
+                  <p className="text-xs text-muted truncate">
+                    {lang === 'fr' ? 'Partagé par' : 'Shared by'} {s.owner_email}
+                  </p>
+                </div>
+                <span className="text-xs text-muted ml-3 flex-shrink-0">
+                  {s.permission === 'edit'
+                    ? (lang === 'fr' ? 'Modifier' : 'Edit')
+                    : (lang === 'fr' ? 'Lecture' : 'View')}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent receipts */}
       <div>

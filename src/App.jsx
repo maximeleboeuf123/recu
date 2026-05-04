@@ -19,6 +19,8 @@ import GuidePage from './pages/GuidePage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import CapturePage from './pages/CapturePage'
+import SharingPage from './pages/SharingPage'
+import SharedAccountPage from './pages/SharedAccountPage'
 
 export default function App() {
   const { session, loading } = useAuth()
@@ -57,6 +59,8 @@ export default function App() {
               <Route path="/dimensions" element={<DimensionsPage />} />
               <Route path="/export" element={<ExportPage />} />
               <Route path="/guide" element={<GuidePage />} />
+              <Route path="/sharing" element={<SharingPage />} />
+              <Route path="/shared/:shareId" element={<SharedAccountPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           )}
