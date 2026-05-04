@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Camera, Sparkles, CheckSquare, LayoutGrid, FileSpreadsheet, Receipt, Lightbulb, Send, Upload, Settings, Mail, Cloud } from 'lucide-react'
+import { ArrowLeft, Camera, Sparkles, CheckSquare, LayoutGrid, FileSpreadsheet, Receipt, Lightbulb, Send, Upload, Settings, Mail, Cloud, Lock } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 const STEPS = {
@@ -24,6 +24,12 @@ const STEPS = {
       color: 'bg-blue-50 text-blue-600',
       title: 'Capture a receipt',
       body: 'Tap the Capture tab. Upload a photo, PDF, or image — or use your camera. Multi-page receipts are supported. The file is saved directly to your Drive inbox.',
+    },
+    {
+      icon: Mail,
+      color: 'bg-sky-50 text-sky-600',
+      title: 'Or forward receipts by email',
+      body: 'Find your Récu inbox address in Settings → Email Inbox. Forward any invoice email (with a PDF or image attachment) and it is extracted and filed automatically — same AI, same Drive.\n\nSecurity note: the forwarding address is shared infrastructure, like a postal sorting centre. Routing is done by sender email — only emails from your approved addresses create receipts in your account. Emails from unknown addresses are silently ignored. Add approved senders in Settings → Approved senders.',
     },
     {
       icon: Sparkles,
@@ -65,6 +71,12 @@ const STEPS = {
       body: 'Appuyez sur Capturer. Téléversez une photo, un PDF ou une image — ou utilisez l\'appareil photo. Les reçus multi-pages sont supportés. Le fichier est sauvegardé directement dans votre Drive.',
     },
     {
+      icon: Mail,
+      color: 'bg-sky-50 text-sky-600',
+      title: 'Ou transférez par courriel',
+      body: 'Trouvez votre adresse Récu dans Paramètres → Boîte courriel. Transférez toute facture (avec pièce jointe PDF ou image) et elle est extraite et classée automatiquement — même IA, même Drive.\n\nSécurité : l\'adresse est une infrastructure partagée, comme un centre de tri postal. Le routage se fait par adresse d\'expéditeur — seuls les courriels de vos adresses approuvées créent des reçus dans votre compte. Les courriels d\'expéditeurs inconnus sont ignorés silencieusement. Gérez vos expéditeurs dans Paramètres → Expéditeurs approuvés.',
+    },
+    {
       icon: Sparkles,
       color: 'bg-violet-50 text-violet-600',
       title: 'L\'IA extrait les données',
@@ -90,14 +102,14 @@ const TIPS = {
     { icon: '☁️', text: 'Google Drive uses the drive.file scope — Récu can only access files it creates. It never reads your existing Drive content.' },
     { icon: '🇨🇦', text: 'GST = 5% federal tax · QST = 9.975% Quebec tax · HST = combined 13–15% in Ontario and other provinces.' },
     { icon: '🔢', text: 'For tax credits (ITCs/ITRs), you need the vendor\'s GST/QST number on the receipt. Récu extracts these automatically.' },
-    { icon: '📧', text: 'Forward invoices by email to your Récu inbox address — find it in Settings.' },
+    { icon: '📧', text: 'The email forwarding address is shared, but routing is by sender — only emails from your approved addresses create receipts in your account. Add senders in Settings → Approved senders.' },
     { icon: '🔁', text: 'Use Capture → Recurring entries for monthly rent, subscriptions, or any fixed repeating expense.' },
   ],
   fr: [
     { icon: '☁️', text: 'Google Drive utilise la portée drive.file — Récu accède uniquement aux fichiers qu\'il crée. Il ne lit jamais votre Drive existant.' },
     { icon: '🇨🇦', text: 'TPS = 5% taxe fédérale · TVQ = 9,975% taxe québécoise · HST = taxe combinée 13–15% en Ontario et autres provinces.' },
     { icon: '🔢', text: 'Pour les crédits de taxe (CTI/RTI), vous avez besoin du numéro TPS/TVQ du fournisseur sur le reçu. Récu les extrait automatiquement.' },
-    { icon: '📧', text: 'Transférez des factures par courriel à votre adresse Récu — trouvez-la dans Paramètres.' },
+    { icon: '📧', text: 'L\'adresse de transfert est partagée, mais le routage se fait par expéditeur — seuls vos courriels approuvés créent des reçus dans votre compte. Gérez les expéditeurs dans Paramètres.' },
     { icon: '🔁', text: 'Utilisez Capturer → Entrées récurrentes pour les loyers, abonnements ou toute dépense fixe répétée.' },
   ],
 }
@@ -205,7 +217,7 @@ export default function GuidePage() {
           {lang === 'en' ? 'Still have questions?' : 'Encore des questions ?'}
         </p>
         <a
-          href="mailto:hello@recu.app"
+          href="mailto:hello@monrecu.app"
           className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
         >
           <Mail size={13} />

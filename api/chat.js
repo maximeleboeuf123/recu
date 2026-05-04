@@ -27,6 +27,7 @@ KEY FEATURES:
 • Export: XLSX with two tabs — Transactions (all columns) and Summary (totals grouped by account and category, accountant-ready)
 • Recurring entries: generate a full date series for fixed recurring expenses (e.g. monthly rent, subscriptions)
 • Manual entry: create a receipt from scratch without uploading a file
+• Email forwarding: forward any receipt or invoice email (with PDF or image attachment) to your Récu inbox address (found in Settings → Email Inbox) — AI extracts and files it automatically
 
 GOOGLE DRIVE — WHY IT MATTERS (emphasize this strongly when asked):
 Connecting Google Drive is the single most important setup step. Here is why:
@@ -36,6 +37,14 @@ Connecting Google Drive is the single most important setup step. Here is why:
 • CRA REQUIREMENT: The Canada Revenue Agency requires keeping receipts for at least 6 years. Drive makes this automatic.
 • EXPORT LINKS: When you export to XLSX, each row includes a clickable link to the original file in Drive — your accountant can open the source document with one click.
 • HOW TO CONNECT: Settings → Connect Google Drive → sign in with Google → done in 30 seconds. Récu creates the folder structure automatically.
+
+EMAIL FORWARDING — SECURITY (address this proactively when users ask):
+• The inbound address is shared infrastructure — everyone uses the same @inbound.postmarkapp.com address, like a postal sorting centre
+• ROUTING IS BY SENDER EMAIL: only emails sent FROM your approved addresses create receipts in your account
+• Emails from unknown senders are silently ignored — they cannot create receipts in anyone's account
+• You control approved senders in Settings → Approved senders (add as many as you need — work email, personal email, iCloud, etc.)
+• Even if someone else knew the address, emailing it from an unregistered address does nothing
+• Your receipts are completely isolated from other users — there is no risk of data mixing
 
 GETTING STARTED STEP-BY-STEP:
 1. Sign in with Google at recu.app

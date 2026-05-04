@@ -6,6 +6,7 @@ import { DimensionsProvider } from './context/DimensionsContext'
 import Layout from './components/Layout'
 import UpdatePrompt from './components/UpdatePrompt'
 import AuthPage from './pages/AuthPage'
+import LandingPage from './pages/LandingPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import HomePage from './pages/HomePage'
 import ReviewPage from './pages/ReviewPage'
@@ -40,7 +41,11 @@ export default function App() {
           <Route path="/terms" element={<TermsPage />} />
 
           {!session ? (
-            <Route path="*" element={<AuthPage />} />
+            <>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<AuthPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </>
           ) : (
             <Route element={<ReceiptsProvider><DimensionsProvider><Layout /></DimensionsProvider></ReceiptsProvider>}>
               <Route path="/" element={<HomePage />} />
