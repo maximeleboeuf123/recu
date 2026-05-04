@@ -7,23 +7,23 @@ import { useAuth } from '../hooks/useAuth'
 const STEPS = {
   en: [
     {
-      icon: Camera,
-      color: 'bg-blue-50 text-blue-600',
-      title: 'Capture a receipt',
-      body: 'Tap the Capture tab. Upload a photo, PDF, or image — or use your camera. Multi-page receipts are supported.',
-    },
-    {
       icon: Cloud,
       color: 'bg-indigo-50 text-indigo-600',
-      title: 'Connect Google Drive — highly recommended',
-      body: 'Go to Settings → Connect Google Drive. Récu will automatically save every receipt file into organized folders: Récu/_Receipts/{Account}/{Year}/{Category}/. Without Drive, only the extracted data is stored — you lose the original files. The CRA requires you to keep receipts for 6 years; Drive makes that effortless.',
+      title: 'Connect Google Drive first',
+      body: 'Récu organizes and standardizes your captured receipts directly in your Google Drive — automatically filed by account, year, and category. Drive comes free with your Gmail account. Do this before capturing: files uploaded without Drive connected won\'t be auto-filed.\n\nImportant: Récu never stores your receipt files on its servers. Only the extracted data (vendor, amounts, dates) is stored. Your documents always live in your Google Drive, under your full control.',
       highlight: true,
     },
     {
       icon: LayoutGrid,
       color: 'bg-amber-50 text-amber-600',
       title: 'Set up accounts & categories',
-      body: 'Go to Settings → Accounts & Categories. Add accounts (e.g. "Personal", "Rental", "Business") and expense categories under each. This drives both Drive folder structure and your export report.',
+      body: 'Go to Settings → Accounts & Categories. Add accounts (e.g. "Personal", "Rental", "Business") and expense categories under each. This defines both your Drive folder structure and your export report.',
+    },
+    {
+      icon: Camera,
+      color: 'bg-blue-50 text-blue-600',
+      title: 'Capture a receipt',
+      body: 'Tap the Capture tab. Upload a photo, PDF, or image — or use your camera. Multi-page receipts are supported. The file is saved directly to your Drive inbox.',
     },
     {
       icon: Sparkles,
@@ -41,34 +41,34 @@ const STEPS = {
       icon: FileSpreadsheet,
       color: 'bg-emerald-50 text-emerald-600',
       title: 'Export for your accountant',
-      body: 'Go to Export. Download an XLSX with all transactions + a summary tab grouped by account and category — everything your accountant needs at tax time.',
+      body: 'Go to Export. Download an XLSX with all transactions + a summary tab grouped by account and category. Each row links directly to the original file in Drive.',
     },
   ],
   fr: [
     {
-      icon: Camera,
-      color: 'bg-blue-50 text-blue-600',
-      title: 'Capturer un reçu',
-      body: 'Appuyez sur Capturer. Téléversez une photo, un PDF ou une image — ou utilisez l\'appareil photo. Les reçus multi-pages sont supportés.',
-    },
-    {
       icon: Cloud,
       color: 'bg-indigo-50 text-indigo-600',
-      title: 'Connecter Google Drive — fortement recommandé',
-      body: 'Allez dans Paramètres → Connecter Google Drive. Récu sauvegarde automatiquement chaque fichier dans des dossiers organisés : Récu/_Receipts/{Compte}/{Année}/{Catégorie}/. Sans Drive, seules les données extraites sont conservées — vous perdez les fichiers originaux. L\'ARC exige de conserver les reçus 6 ans ; Drive rend ça automatique.',
+      title: 'Connecter Google Drive en premier',
+      body: 'Récu organise et standardise vos reçus capturés directement dans votre Google Drive — classés automatiquement par compte, année et catégorie. Drive est inclus gratuitement avec votre compte Gmail. Faites-le avant de capturer : les fichiers téléversés sans Drive ne seront pas classés automatiquement.\n\nImportant : Récu ne stocke jamais vos fichiers sur ses serveurs. Seules les données extraites (fournisseur, montants, dates) sont conservées. Vos documents vivent dans votre Google Drive, sous votre contrôle total.',
       highlight: true,
     },
     {
       icon: LayoutGrid,
       color: 'bg-amber-50 text-amber-600',
       title: 'Configurer comptes et catégories',
-      body: 'Allez dans Paramètres → Comptes et catégories. Ajoutez des comptes (ex. « Personnel », « Locatif », « Entreprise ») et des catégories de dépenses. Cela définit la structure des dossiers Drive et le rapport d\'export.',
+      body: 'Allez dans Paramètres → Comptes et catégories. Ajoutez des comptes (ex. « Personnel », « Locatif », « Entreprise ») et des catégories. Cela définit la structure des dossiers Drive et votre rapport d\'export.',
+    },
+    {
+      icon: Camera,
+      color: 'bg-blue-50 text-blue-600',
+      title: 'Capturer un reçu',
+      body: 'Appuyez sur Capturer. Téléversez une photo, un PDF ou une image — ou utilisez l\'appareil photo. Les reçus multi-pages sont supportés. Le fichier est sauvegardé directement dans votre Drive.',
     },
     {
       icon: Sparkles,
       color: 'bg-violet-50 text-violet-600',
       title: 'L\'IA extrait les données',
-      body: 'Claude IA lit le fournisseur, la date, les montants et les taxes automatiquement en ~60 secondes. Les champs à faible confiance sont signalés.',
+      body: 'Claude IA lit le fournisseur, la date, les montants et les taxes automatiquement en ~60 secondes. Les champs incertains sont signalés.',
     },
     {
       icon: CheckSquare,
@@ -80,7 +80,7 @@ const STEPS = {
       icon: FileSpreadsheet,
       color: 'bg-emerald-50 text-emerald-600',
       title: 'Exporter pour votre comptable',
-      body: 'Allez dans Exporter. Téléchargez un XLSX avec toutes les transactions + un onglet résumé par compte et catégorie — tout ce dont votre comptable a besoin.',
+      body: 'Allez dans Exporter. Téléchargez un XLSX avec toutes les transactions + un onglet résumé. Chaque ligne contient un lien direct vers le fichier original dans Drive.',
     },
   ],
 }
