@@ -429,18 +429,16 @@ function LedgerRow({ receipt, onClick, onDuplicate, onDelete }) {
           </>
         ) : (
           <>
-            {!isPending && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onDuplicate?.(receipt) }}
-                className="px-3 py-4 text-muted hover:text-primary transition-colors"
-                aria-label="Duplicate"
-              >
-                <Copy size={14} />
-              </button>
-            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onDuplicate?.(receipt) }}
+              className="px-3 py-4 text-muted hover:text-primary transition-colors"
+              aria-label="Duplicate"
+            >
+              <Copy size={14} />
+            </button>
             <button
               onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true) }}
-              className={`px-3 py-4 text-muted hover:text-error transition-colors ${!isPending ? 'border-l border-border/60' : ''}`}
+              className="px-3 py-4 text-muted hover:text-error transition-colors border-l border-border/60"
               aria-label="Delete"
             >
               <Trash2 size={14} />
