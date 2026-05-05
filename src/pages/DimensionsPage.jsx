@@ -6,22 +6,34 @@ import { useDimensions } from '../context/DimensionsContext'
 
 const PRESETS = [
   {
-    key: 'selfEmployed',
-    icon: '💼',
-    en: { label: 'CRA Self-Employed (T2125)', accountName: 'Self-Employed Business', categories: ['Advertising', 'Meals & entertainment', 'Insurance', 'Interest', 'Professional fees', 'Rent', 'Repairs & maintenance', 'Travel', 'Telephone & utilities', 'Other expenses'] },
-    fr: { label: 'Travailleur autonome (T2125)', accountName: 'Travailleur autonome', categories: ['Publicité', 'Repas et représentation', 'Assurances', 'Intérêts', 'Honoraires professionnels', 'Loyer', 'Réparations', 'Voyages', 'Téléphone et services publics', 'Autres dépenses'] },
-  },
-  {
-    key: 'rental',
-    icon: '🏠',
-    en: { label: 'CRA Rental Property (T776)', accountName: 'Rental Property 1', categories: ['Advertising', 'Insurance', 'Interest', 'Maintenance & repairs', 'Management fees', 'Motor vehicle', 'Office expenses', 'Professional fees', 'Property taxes', 'Travel', 'Utilities'] },
-    fr: { label: 'Bien locatif (T776)', accountName: 'Bien locatif 1', categories: ['Publicité', 'Assurances', 'Intérêts', 'Entretien et réparations', 'Frais de gestion', 'Véhicule à moteur', 'Frais de bureau', 'Honoraires professionnels', 'Taxes foncières', 'Voyages', 'Services publics'] },
-  },
-  {
     key: 'personal',
     icon: '👤',
     en: { label: 'Personal', accountName: 'Personal', categories: ['Groceries', 'Restaurant', 'Transportation', 'Health & medical', 'Entertainment', 'Clothing', 'Home', 'Travel', 'Other'] },
     fr: { label: 'Personnel', accountName: 'Personnel', categories: ['Épicerie', 'Restaurant', 'Transport', 'Santé', 'Divertissement', 'Vêtements', 'Maison', 'Voyages', 'Autres'] },
+  },
+  {
+    key: 'selfEmployed',
+    icon: '💼',
+    en: { label: 'Self-Employed (T2125)', accountName: 'Self-Employed Business', categories: ['Advertising', 'Meals & entertainment', 'Insurance', 'Interest & bank fees', 'Professional fees', 'Rent', 'Repairs & maintenance', 'Software & subscriptions', 'Travel', 'Telephone & utilities', 'Other expenses'] },
+    fr: { label: 'Travailleur autonome (T2125)', accountName: 'Travailleur autonome', categories: ['Publicité', 'Repas et représentation', 'Assurances', 'Intérêts et frais bancaires', 'Honoraires professionnels', 'Loyer', 'Réparations', 'Logiciels et abonnements', 'Voyages', 'Téléphone et services publics', 'Autres dépenses'] },
+  },
+  {
+    key: 'corporation',
+    icon: '🏢',
+    en: { label: 'Corporation / Small Business', accountName: 'Corporation', categories: ['Advertising', 'Bank charges', 'Insurance', 'Interest', 'Meals & entertainment', 'Office supplies', 'Professional fees', 'Salaries', 'Software & subscriptions', 'Travel', 'Vehicle expenses', 'Other'] },
+    fr: { label: 'Société / PME', accountName: 'Société', categories: ['Publicité', 'Frais bancaires', 'Assurances', 'Intérêts', 'Repas et représentation', 'Fournitures de bureau', 'Honoraires professionnels', 'Salaires', 'Logiciels et abonnements', 'Voyages', 'Frais de véhicule', 'Autres'] },
+  },
+  {
+    key: 'rental',
+    icon: '🏠',
+    en: { label: 'Rental Property (T776)', accountName: 'Rental Property 1', categories: ['Advertising', 'Insurance', 'Interest', 'Maintenance & repairs', 'Management fees', 'Motor vehicle', 'Office expenses', 'Professional fees', 'Property taxes', 'Travel', 'Utilities'] },
+    fr: { label: 'Bien locatif (T776)', accountName: 'Bien locatif 1', categories: ['Publicité', 'Assurances', 'Intérêts', 'Entretien et réparations', 'Frais de gestion', 'Véhicule à moteur', 'Frais de bureau', 'Honoraires professionnels', 'Taxes foncières', 'Voyages', 'Services publics'] },
+  },
+  {
+    key: 'employee',
+    icon: '👔',
+    en: { label: 'Employee Expenses (T2200)', accountName: 'Employee Expenses', categories: ['Home office', 'Vehicle', 'Meals & entertainment', 'Tools & supplies', 'Professional dues', 'Training & education', 'Other employment expenses'] },
+    fr: { label: 'Dépenses d\'emploi (T2200)', accountName: 'Dépenses d\'emploi', categories: ['Bureau à domicile', 'Véhicule', 'Repas et représentation', 'Outils et fournitures', 'Cotisations professionnelles', 'Formation', 'Autres frais d\'emploi'] },
   },
 ]
 
