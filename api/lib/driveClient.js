@@ -126,6 +126,32 @@ export async function findFilesByName(accessToken, name, folderId) {
   return data.files || []
 }
 
+export async function createShortcut(accessToken, name, targetId, parentId) {
+  const res = await fetch(`${DRIVE_API}/files?fields=id,name`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name,
+      mimeType: 'application/vnd.google-apps.shortcut',
+      parents: [parentId],
+      shortcutDetails: { targetId },
+    }),
+  })
+  if (!res.ok) throw new Error(`createShortcut failed: ${res.status}`)
+  return res.json()
+}
+
+export async function findShortcutByName(accessToken, name, parentId) {
+  const q = encodeURIComponent(
+    `name='${escapeDriveQuery(name)}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.shortcut' and trashed=false`
+  )
+  const res = await fetch(`${DRIVE_API}/files?q=${q}&fields=files(id)`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  const data = await res.json()
+  return data.files?.[0] || null
+}
+
 export async function grantFolderPermission(accessToken, folderId, email, role = 'writer') {
   const res = await fetch(
     `${DRIVE_API}/files/${folderId}/permissions?sendNotificationEmail=false&fields=id`,

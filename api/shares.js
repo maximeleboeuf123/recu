@@ -3,6 +3,7 @@ import { getServiceClient } from './lib/auth.js'
 import { planAllows } from './lib/plans.js'
 import {
   getValidToken, findOrCreateFolder, grantFolderPermission, revokeFolderPermission,
+  createShortcut, findShortcutByName, deleteFile,
 } from './lib/driveClient.js'
 
 function decodeJwt(token) {
@@ -217,6 +218,26 @@ export default async function handler(req, res) {
       .update({ status: 'accepted', ...(perms.main ? { drive_permission_id: perms.main } : {}) })
       .eq('id', id)
 
+    // Create a shortcut "Shared - {AccountName}" in the recipient's Récu root folder
+    try {
+      const recipientToken = await getValidToken(userId, serviceClient)
+      const [{ data: recipientUser }, { data: ownerDim }] = await Promise.all([
+        serviceClient.from('users').select('drive_folder_id').eq('id', userId).single(),
+        serviceClient.from('dimensions').select('drive_folder_id')
+          .eq('user_id', share.owner_id).eq('type', 'account').eq('name', share.account_name).maybeSingle(),
+      ])
+      if (recipientToken && recipientUser?.drive_folder_id && ownerDim?.drive_folder_id) {
+        await createShortcut(
+          recipientToken,
+          `Shared - ${share.account_name}`,
+          ownerDim.drive_folder_id,
+          recipientUser.drive_folder_id,
+        )
+      }
+    } catch (e) {
+      console.error('shares: create shortcut (non-fatal):', e?.message)
+    }
+
     return res.status(200).json({ ok: true })
   }
 
@@ -250,11 +271,26 @@ export default async function handler(req, res) {
       .maybeSingle()
 
     if (asRecipient) {
-      // Revoke the Drive permission granted to this user
+      // Revoke the Drive permission and delete the shortcut from recipient's Récu folder
       if (asRecipient.drive_permission_id) {
         await revokeAccountDrive(asRecipient.owner_id, asRecipient.account_name, {
           main: asRecipient.drive_permission_id,
         }, serviceClient)
+      }
+      try {
+        const recipientToken = await getValidToken(userId, serviceClient)
+        const { data: recipientUser } = await serviceClient
+          .from('users').select('drive_folder_id').eq('id', userId).single()
+        if (recipientToken && recipientUser?.drive_folder_id) {
+          const shortcut = await findShortcutByName(
+            recipientToken,
+            `Shared - ${asRecipient.account_name}`,
+            recipientUser.drive_folder_id,
+          )
+          if (shortcut?.id) await deleteFile(recipientToken, shortcut.id)
+        }
+      } catch (e) {
+        console.error('shares: delete shortcut (non-fatal):', e?.message)
       }
       await serviceClient.from('account_shares').delete().eq('id', id)
       return res.status(200).end()
