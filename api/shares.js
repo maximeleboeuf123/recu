@@ -158,12 +158,16 @@ export default async function handler(req, res) {
 
     // Grant Drive folder access immediately if share is accepted
     if (isAccepted) {
-      const perms = await grantAccountDrive(
-        userId, account_name.trim(), shared_with_email.toLowerCase(), permission, serviceClient
-      )
-      if (perms.main) {
-        await serviceClient.from('account_shares').update({ drive_permission_id: perms.main }).eq('id', share.id)
-        Object.assign(share, { drive_permission_id: perms.main })
+      try {
+        const perms = await grantAccountDrive(
+          userId, account_name.trim(), shared_with_email.toLowerCase(), permission, serviceClient
+        )
+        if (perms.main) {
+          await serviceClient.from('account_shares').update({ drive_permission_id: perms.main }).eq('id', share.id)
+          Object.assign(share, { drive_permission_id: perms.main })
+        }
+      } catch (e) {
+        console.error('shares: Drive grant post-insert (non-fatal):', e?.message)
       }
     }
 

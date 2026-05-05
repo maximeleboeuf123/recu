@@ -30,17 +30,20 @@ export default function SharingPage() {
     if (!form.account_name || !form.email.includes('@')) return
     setShareLoading(true)
     setShareError(null)
-    const { error } = await createShare(form.account_name, form.email.trim(), form.permission)
-    if (error === 'already_shared') {
-      setShareError(lang === 'fr' ? 'Déjà partagé avec cet utilisateur' : 'Already shared with this user')
-    } else if (error === 'cannot_share_with_self') {
-      setShareError(lang === 'fr' ? 'Vous ne pouvez pas vous partager un compte' : 'Cannot share with yourself')
-    } else if (error) {
-      setShareError(lang === 'fr' ? 'Erreur' : 'Error')
-    } else {
-      setField('email', '')
+    try {
+      const { error } = await createShare(form.account_name, form.email.trim(), form.permission)
+      if (error === 'already_shared') {
+        setShareError(lang === 'fr' ? 'Déjà partagé avec cet utilisateur' : 'Already shared with this user')
+      } else if (error === 'cannot_share_with_self') {
+        setShareError(lang === 'fr' ? 'Vous ne pouvez pas vous partager un compte' : 'Cannot share with yourself')
+      } else if (error) {
+        setShareError(lang === 'fr' ? 'Erreur réseau — réessayez' : 'Network error — please retry')
+      } else {
+        setField('email', '')
+      }
+    } finally {
+      setShareLoading(false)
     }
-    setShareLoading(false)
   }
 
   return (

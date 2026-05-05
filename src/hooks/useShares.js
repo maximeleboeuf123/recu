@@ -25,18 +25,22 @@ export function useShares() {
   useEffect(() => { fetchShares() }, [fetchShares])
 
   const createShare = useCallback(async (account_name, shared_with_email, permission = 'edit') => {
-    const res = await fetch('/api/shares', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ account_name, shared_with_email, permission }),
-    })
-    const data = await res.json()
-    if (!res.ok) return { error: data.error }
-    setOwned(prev => [data.share, ...prev])
-    return { share: data.share }
+    try {
+      const res = await fetch('/api/shares', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ account_name, shared_with_email, permission }),
+      })
+      const data = await res.json()
+      if (!res.ok) return { error: data.error || 'unknown' }
+      setOwned(prev => [data.share, ...prev])
+      return { share: data.share }
+    } catch {
+      return { error: 'network_error' }
+    }
   }, [session?.access_token])
 
   const revokeShare = useCallback(async (id) => {
