@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { getServiceClient } from './lib/auth.js'
 import { planAllows } from './lib/plans.js'
+import { getValidToken, findOrCreateFolder, grantFolderPermission, revokeFolderPermission } from './lib/driveClient.js'
 
 function decodeJwt(token) {
   try {
@@ -24,6 +25,44 @@ function parseBody(req) {
   })
 }
 
+// Grant guest access to Récu/{accountName}/ in the owner's Drive.
+// Returns permissionId (store in account_shares for later revocation), or null if Drive not connected.
+async function grantAccountDrive(ownerId, accountName, guestEmail, permission, serviceClient) {
+  try {
+    const { data: userData } = await serviceClient
+      .from('users').select('drive_folder_id').eq('id', ownerId).single()
+    if (!userData?.drive_folder_id) return null
+
+    const accessToken = await getValidToken(ownerId, serviceClient)
+    if (!accessToken) return null
+
+    const accountFolder = await findOrCreateFolder(accessToken, accountName, userData.drive_folder_id)
+    const role = permission === 'edit' ? 'writer' : 'reader'
+    return await grantFolderPermission(accessToken, accountFolder.id, guestEmail, role)
+  } catch (e) {
+    console.error('Drive permission grant (non-critical):', e?.message)
+    return null
+  }
+}
+
+// Revoke guest access from Récu/{accountName}/ using stored permissionId.
+async function revokeAccountDrive(ownerId, accountName, permissionId, serviceClient) {
+  if (!permissionId) return
+  try {
+    const { data: userData } = await serviceClient
+      .from('users').select('drive_folder_id').eq('id', ownerId).single()
+    if (!userData?.drive_folder_id) return
+
+    const accessToken = await getValidToken(ownerId, serviceClient)
+    if (!accessToken) return
+
+    const accountFolder = await findOrCreateFolder(accessToken, accountName, userData.drive_folder_id)
+    await revokeFolderPermission(accessToken, accountFolder.id, permissionId)
+  } catch (e) {
+    console.error('Drive permission revoke (non-critical):', e?.message)
+  }
+}
+
 export default async function handler(req, res) {
   const authHeader = req.headers.authorization
   if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'unauthorized' })
@@ -39,14 +78,28 @@ export default async function handler(req, res) {
     { global: { headers: { Authorization: `Bearer ${token}` } } }
   )
 
-  // GET — return owned + received shares; auto-accept pending shares for this email
+  // GET — return owned + received; auto-accept pending shares and grant Drive access
   if (req.method === 'GET') {
     if (userEmail) {
-      await serviceClient
+      const { data: pending } = await serviceClient
         .from('account_shares')
-        .update({ shared_with_id: userId, status: 'accepted' })
+        .select('id, owner_id, account_name, permission, shared_with_email')
         .eq('shared_with_email', userEmail.toLowerCase())
         .is('shared_with_id', null)
+
+      for (const share of pending || []) {
+        const permissionId = await grantAccountDrive(
+          share.owner_id, share.account_name, share.shared_with_email, share.permission, serviceClient
+        )
+        await serviceClient
+          .from('account_shares')
+          .update({
+            shared_with_id: userId,
+            status: 'accepted',
+            ...(permissionId ? { drive_permission_id: permissionId } : {}),
+          })
+          .eq('id', share.id)
+      }
     }
 
     const [{ data: owned }, { data: received }] = await Promise.all([
@@ -57,7 +110,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ owned: owned || [], received: received || [] })
   }
 
-  // POST — create a share
+  // POST — create a share and grant Drive access if recipient already has an account
   if (req.method === 'POST') {
     let body
     try { body = await parseBody(req) } catch { return res.status(400).json({ error: 'bad_request' }) }
@@ -70,16 +123,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'cannot_share_with_self' })
     }
 
-    // Plan check — planAllows always true for now; plug Stripe in plans.js later
     const { data: userData } = await serviceClient.from('users').select('plan').eq('id', userId).single()
     if (!planAllows(userData?.plan, 'account_sharing')) {
       return res.status(403).json({ error: 'upgrade_required' })
     }
 
-    // Resolve recipient ID if they already have a Récu account
     const { data: recipientId } = await serviceClient
       .rpc('get_user_id_by_email', { lookup_email: shared_with_email.toLowerCase() })
 
+    const isAccepted = !!recipientId
     const shareRow = {
       owner_id: userId,
       owner_email: userEmail,
@@ -87,7 +139,7 @@ export default async function handler(req, res) {
       shared_with_id: recipientId || null,
       account_name: account_name.trim(),
       permission,
-      status: recipientId ? 'accepted' : 'pending',
+      status: isAccepted ? 'accepted' : 'pending',
     }
 
     const { data: share, error } = await anonClient
@@ -99,18 +151,48 @@ export default async function handler(req, res) {
     if (error?.code === '23505') return res.status(409).json({ error: 'already_shared' })
     if (error) { console.error('shares insert:', error); return res.status(500).json({ error: 'db_error' }) }
 
+    // Grant Drive folder access immediately if share is accepted
+    if (isAccepted) {
+      const permissionId = await grantAccountDrive(
+        userId, account_name.trim(), shared_with_email.toLowerCase(), permission, serviceClient
+      )
+      if (permissionId) {
+        await serviceClient
+          .from('account_shares')
+          .update({ drive_permission_id: permissionId })
+          .eq('id', share.id)
+        share.drive_permission_id = permissionId
+      }
+    }
+
     return res.status(200).json({ share })
   }
 
-  // DELETE — revoke (owner only; RLS also enforces this)
+  // DELETE — revoke Drive access then remove the share row
   if (req.method === 'DELETE') {
     const id = req.query?.id
     if (!id) return res.status(400).json({ error: 'missing_id' })
+
+    // Fetch the share to get Drive details before deleting
+    const { data: existing } = await serviceClient
+      .from('account_shares')
+      .select('owner_id, account_name, drive_permission_id')
+      .eq('id', id)
+      .eq('owner_id', userId)
+      .single()
+
+    if (existing?.drive_permission_id) {
+      await revokeAccountDrive(
+        existing.owner_id, existing.account_name, existing.drive_permission_id, serviceClient
+      )
+    }
+
     const { error } = await anonClient
       .from('account_shares')
       .delete()
       .eq('id', id)
       .eq('owner_id', userId)
+
     if (error) return res.status(500).json({ error: 'db_error' })
     return res.status(200).end()
   }

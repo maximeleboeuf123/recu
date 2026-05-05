@@ -126,6 +126,28 @@ export async function findFilesByName(accessToken, name, folderId) {
   return data.files || []
 }
 
+export async function grantFolderPermission(accessToken, folderId, email, role = 'writer') {
+  const res = await fetch(
+    `${DRIVE_API}/files/${folderId}/permissions?sendNotificationEmail=false&fields=id`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, type: 'user', emailAddress: email }),
+    }
+  )
+  if (!res.ok) throw new Error(`Grant permission failed: ${res.status} ${await res.text()}`)
+  const data = await res.json()
+  return data.id // permissionId — store this to revoke later
+}
+
+export async function revokeFolderPermission(accessToken, folderId, permissionId) {
+  const res = await fetch(`${DRIVE_API}/files/${folderId}/permissions/${permissionId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!res.ok && res.status !== 404) throw new Error(`Revoke permission failed: ${res.status}`)
+}
+
 export async function revokeAccessToken(accessToken) {
   await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(accessToken)}`, {
     method: 'POST',
