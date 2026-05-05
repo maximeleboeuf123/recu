@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Search, BookOpen, SlidersHorizontal, X, Copy } from 'lucide-react'
+import { Search, BookOpen, SlidersHorizontal, X, Copy, Trash2 } from 'lucide-react'
 import { useReceipts } from '../hooks/useReceipts'
 import { usePatterns } from '../hooks/usePatterns'
 import { useDriveActions } from '../hooks/useDriveActions'
 import { useLedgerFilters } from '../context/LedgerFilterContext'
 import { useDimensions } from '../context/DimensionsContext'
+import { useShares } from '../hooks/useShares'
 import ReviewCard from '../components/ReviewCard'
 
 export default function LedgerPage() {
@@ -16,6 +17,11 @@ export default function LedgerPage() {
   const { organizeFile, deleteFromDrive, uploadFile } = useDriveActions()
   const { filters, setField, setSearch, resetFilters, activeCount } = useLedgerFilters()
   const { accountsWithCategories } = useDimensions()
+  const { received: sharedWith } = useShares()
+  const sharedAccounts = useMemo(
+    () => sharedWith.filter(s => s.status === 'accepted').map(s => s.account_name),
+    [sharedWith]
+  )
 
   const [expandedId, setExpandedId] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
@@ -278,6 +284,11 @@ export default function LedgerPage() {
                 {accountsWithCategories.map((a) => (
                   <option key={a.id} value={a.name}>{a.name}</option>
                 ))}
+                {sharedAccounts.map(name => (
+                  <option key={`shared-${name}`} value={name}>
+                    {name} ({lang === 'en' ? 'shared' : 'partagé'})
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -354,7 +365,7 @@ export default function LedgerPage() {
                 onReplaceFile={(file) => handleReplaceFile(r.id, file)}
               />
             ) : (
-              <LedgerRow key={r.id} receipt={r} onClick={() => setExpandedId(r.id)} onDuplicate={handleDuplicate} />
+              <LedgerRow key={r.id} receipt={r} onClick={() => setExpandedId(r.id)} onDuplicate={handleDuplicate} onDelete={handleDelete} />
             ),
           )}
         </div>
@@ -369,8 +380,9 @@ export default function LedgerPage() {
   )
 }
 
-function LedgerRow({ receipt, onClick, onDuplicate }) {
+function LedgerRow({ receipt, onClick, onDuplicate, onDelete }) {
   const isPending = receipt.status === 'pending'
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   return (
     <div className="flex items-center bg-surface border border-border rounded-[8px] hover:border-primary/40 transition-colors">
@@ -397,15 +409,45 @@ function LedgerRow({ receipt, onClick, onDuplicate }) {
             : '—'}
         </p>
       </div>
-      {!isPending && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onDuplicate?.(receipt) }}
-          className="px-3 py-4 text-muted hover:text-primary transition-colors border-l border-border/60 flex-shrink-0"
-          aria-label="Duplicate"
-        >
-          <Copy size={14} />
-        </button>
-      )}
+      <div className="flex items-stretch border-l border-border/60 flex-shrink-0">
+        {confirmingDelete ? (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); setConfirmingDelete(false) }}
+              className="px-2.5 py-4 text-muted hover:text-[#1A1A18] transition-colors"
+              aria-label="Cancel"
+            >
+              <X size={13} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete?.(receipt.id) }}
+              className="px-3 py-4 text-error hover:text-error/70 transition-colors border-l border-border/60"
+              aria-label="Confirm delete"
+            >
+              <Trash2 size={14} />
+            </button>
+          </>
+        ) : (
+          <>
+            {!isPending && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDuplicate?.(receipt) }}
+                className="px-3 py-4 text-muted hover:text-primary transition-colors"
+                aria-label="Duplicate"
+              >
+                <Copy size={14} />
+              </button>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true) }}
+              className={`px-3 py-4 text-muted hover:text-error transition-colors ${!isPending ? 'border-l border-border/60' : ''}`}
+              aria-label="Delete"
+            >
+              <Trash2 size={14} />
+            </button>
+          </>
+        )}
+      </div>
     </div>
   )
 }

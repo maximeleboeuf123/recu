@@ -224,14 +224,14 @@ export default async function handler(req, res) {
     // Group receipts by account
     const groups = {}
     for (const r of receipts) {
-      const acc = r.labels?.property || ''
+      const acc = r.labels?.property || '_unassigned'
       if (!groups[acc]) groups[acc] = []
       groups[acc].push(r)
     }
 
     const accountNames = Object.keys(groups).sort((a, b) => {
-      if (!a) return 1
-      if (!b) return -1
+      if (a === '_unassigned') return 1
+      if (b === '_unassigned') return -1
       return a.localeCompare(b)
     })
     const multiAccount = accountNames.length > 1
@@ -241,16 +241,12 @@ export default async function handler(req, res) {
     for (const accName of accountNames) {
       const accReceipts = groups[accName]
 
-      // Resolve _Exports folder: Récu/{AccountName}/_Exports or Récu/_Exports
-      let parentId = userData.drive_folder_id
-      if (accName) {
-        const accFolder = await findOrCreateFolder(accessToken, accName, userData.drive_folder_id)
-        parentId = accFolder.id
-      }
-      const exportFolder = await findOrCreateFolder(accessToken, '_Exports', parentId)
+      // Récu/{Account}/_export/
+      const accFolder = await findOrCreateFolder(accessToken, accName, userData.drive_folder_id)
+      const exportFolder = await findOrCreateFolder(accessToken, '_export', accFolder.id)
 
       const safeName = accName.replace(/[^a-zA-Z0-9\s\-éàèùâêîôûçÉÀÈÙÂÊÎÔÛÇ]/g, '').trim()
-      const driveFilename = multiAccount && safeName ? `${base} - ${safeName}${ext}` : `${base}${ext}`
+      const driveFilename = multiAccount ? `${base} - ${safeName || 'unassigned'}${ext}` : `${base}${ext}`
 
       // Overwrite: delete any existing file with the same name
       const existing = await findFilesByName(accessToken, driveFilename, exportFolder.id)
@@ -268,7 +264,7 @@ export default async function handler(req, res) {
         accessToken, driveFilename, mimeType, fileBuffer.toString('base64'), exportFolder.id,
       )
 
-      files.push({ account: accName || '', filename: driveFilename, fileUrl: uploaded.webViewLink })
+      files.push({ account: accName === '_unassigned' ? '' : accName, filename: driveFilename, fileUrl: uploaded.webViewLink })
     }
 
     return res.status(200).json({ files })

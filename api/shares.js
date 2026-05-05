@@ -27,70 +27,42 @@ function parseBody(req) {
   })
 }
 
-// Grant guest access to account folders across all three Drive trees.
-// Returns { main, review, process } permissionIds (store in account_shares).
+// Grant guest access to the account folder (Récu/{Account}/).
+// Returns { main: permissionId }.
 async function grantAccountDrive(ownerId, accountName, guestEmail, permission, serviceClient) {
   try {
     const { data: userData } = await serviceClient
       .from('users')
-      .select('drive_inbox_id, drive_review_folder_id, drive_to_process_id')
+      .select('drive_folder_id')
       .eq('id', ownerId).single()
 
     const accessToken = await getValidToken(ownerId, serviceClient)
-    if (!accessToken) return {}
+    if (!accessToken || !userData?.drive_folder_id) return {}
 
     const role = permission === 'edit' ? 'writer' : 'reader'
-    const result = {}
-
-    const roots = [
-      { key: 'main',    id: userData?.drive_inbox_id },
-      { key: 'review',  id: userData?.drive_review_folder_id },
-      { key: 'process', id: userData?.drive_to_process_id },
-    ]
-
-    for (const { key, id } of roots) {
-      if (!id) continue
-      try {
-        const folder = await findOrCreateFolder(accessToken, accountName, id)
-        result[key] = await grantFolderPermission(accessToken, folder.id, guestEmail, role)
-      } catch (e) {
-        console.error(`Drive permission grant (${key}, non-critical):`, e?.message)
-      }
-    }
-    return result
+    const accountFolder = await findOrCreateFolder(accessToken, accountName, userData.drive_folder_id)
+    const permId = await grantFolderPermission(accessToken, accountFolder.id, guestEmail, role)
+    return { main: permId }
   } catch (e) {
     console.error('Drive permission grant (non-critical):', e?.message)
     return {}
   }
 }
 
-// Revoke guest access from all three folder trees.
+// Revoke guest access from the account folder.
 async function revokeAccountDrive(ownerId, accountName, permissionIds, serviceClient) {
-  if (!permissionIds || Object.keys(permissionIds).length === 0) return
+  if (!permissionIds?.main) return
   try {
     const { data: userData } = await serviceClient
       .from('users')
-      .select('drive_inbox_id, drive_review_folder_id, drive_to_process_id')
+      .select('drive_folder_id')
       .eq('id', ownerId).single()
 
     const accessToken = await getValidToken(ownerId, serviceClient)
-    if (!accessToken) return
+    if (!accessToken || !userData?.drive_folder_id) return
 
-    const roots = [
-      { key: 'main',    id: userData?.drive_inbox_id,          permId: permissionIds.main },
-      { key: 'review',  id: userData?.drive_review_folder_id,  permId: permissionIds.review },
-      { key: 'process', id: userData?.drive_to_process_id,     permId: permissionIds.process },
-    ]
-
-    for (const { key, id, permId } of roots) {
-      if (!id || !permId) continue
-      try {
-        const folder = await findOrCreateFolder(accessToken, accountName, id)
-        await revokeFolderPermission(accessToken, folder.id, permId)
-      } catch (e) {
-        console.error(`Drive permission revoke (${key}, non-critical):`, e?.message)
-      }
-    }
+    const accountFolder = await findOrCreateFolder(accessToken, accountName, userData.drive_folder_id)
+    await revokeFolderPermission(accessToken, accountFolder.id, permissionIds.main)
   } catch (e) {
     console.error('Drive permission revoke (non-critical):', e?.message)
   }
@@ -129,9 +101,7 @@ export default async function handler(req, res) {
           .update({
             shared_with_id: userId,
             status: 'accepted',
-            ...(perms.main    ? { drive_permission_id: perms.main }           : {}),
-            ...(perms.review  ? { drive_review_permission_id: perms.review }  : {}),
-            ...(perms.process ? { drive_process_permission_id: perms.process } : {}),
+            ...(perms.main ? { drive_permission_id: perms.main } : {}),
           })
           .eq('id', share.id)
       }
@@ -191,14 +161,42 @@ export default async function handler(req, res) {
       const perms = await grantAccountDrive(
         userId, account_name.trim(), shared_with_email.toLowerCase(), permission, serviceClient
       )
-      if (Object.keys(perms).length) {
-        const updates = {
-          ...(perms.main    ? { drive_permission_id: perms.main }           : {}),
-          ...(perms.review  ? { drive_review_permission_id: perms.review }  : {}),
-          ...(perms.process ? { drive_process_permission_id: perms.process } : {}),
-        }
-        await serviceClient.from('account_shares').update(updates).eq('id', share.id)
-        Object.assign(share, updates)
+      if (perms.main) {
+        await serviceClient.from('account_shares').update({ drive_permission_id: perms.main }).eq('id', share.id)
+        Object.assign(share, { drive_permission_id: perms.main })
+      }
+    }
+
+    // Email invite for non-users
+    if (!recipientId && process.env.POSTMARK_API_KEY) {
+      try {
+        await fetch('https://api.postmarkapp.com/email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Postmark-Server-Token': process.env.POSTMARK_API_KEY,
+          },
+          body: JSON.stringify({
+            From: 'Récu <noreply@monrecu.app>',
+            To: shared_with_email,
+            Subject: `${userEmail} shared an account with you on Récu`,
+            TextBody: [
+              `Hi / Bonjour,`,
+              '',
+              `${userEmail} has shared the account "${account_name.trim()}" with you on Récu.`,
+              `${userEmail} vous a partagé le compte « ${account_name.trim()} » sur Récu.`,
+              '',
+              `Create a free account at monrecu.app using this email address (${shared_with_email}) — the shared account will appear automatically once you sign in.`,
+              `Créez un compte gratuit sur monrecu.app avec cette adresse (${shared_with_email}) — le compte partagé apparaîtra automatiquement une fois connecté.`,
+              '',
+              `https://monrecu.app`,
+              '',
+              `— The Récu team / L'équipe Récu`,
+            ].join('\n'),
+          }),
+        })
+      } catch (e) {
+        console.error('Share invite email error:', e?.message)
       }
     }
 
@@ -210,19 +208,16 @@ export default async function handler(req, res) {
     const id = req.query?.id
     if (!id) return res.status(400).json({ error: 'missing_id' })
 
-    // Fetch the share to get Drive details before deleting
     const { data: existing } = await serviceClient
       .from('account_shares')
-      .select('owner_id, account_name, drive_permission_id, drive_review_permission_id, drive_process_permission_id')
+      .select('owner_id, account_name, drive_permission_id')
       .eq('id', id)
       .eq('owner_id', userId)
       .single()
 
     if (existing) {
       await revokeAccountDrive(existing.owner_id, existing.account_name, {
-        main:    existing.drive_permission_id,
-        review:  existing.drive_review_permission_id,
-        process: existing.drive_process_permission_id,
+        main: existing.drive_permission_id,
       }, serviceClient)
     }
 

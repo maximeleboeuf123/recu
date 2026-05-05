@@ -4,12 +4,20 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Layers, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync, Copy, Check, Share2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useDrive } from '../hooks/useDrive'
+import { useShares } from '../hooks/useShares'
 import LanguageToggle from '../components/LanguageToggle'
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation()
   const { session, signOut } = useAuth()
   const { driveState, loading: driveLoading, refresh: refreshDrive } = useDrive()
+  const { received: sharedWithMe } = useShares()
+  const unackedSharesCount = (() => {
+    try {
+      const acked = new Set(JSON.parse(localStorage.getItem('recu_acked_shares') || '[]'))
+      return sharedWithMe.filter(s => !acked.has(s.id)).length
+    } catch { return 0 }
+  })()
   const [searchParams, setSearchParams] = useSearchParams()
   const [toast, setToast] = useState(null)
   const [inboxEmail, setInboxEmail] = useState(null)
@@ -93,6 +101,11 @@ export default function SettingsPage() {
           <span className="flex-1 text-sm font-medium text-[#1A1A18]">
             {lang === 'en' ? 'Account sharing' : 'Partage de comptes'}
           </span>
+          {unackedSharesCount > 0 && (
+            <span className="bg-accent text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 mr-1">
+              {unackedSharesCount}
+            </span>
+          )}
           <ChevronRight size={15} className="text-muted" />
         </Link>
         <div className="flex items-center justify-between px-4 py-3.5">

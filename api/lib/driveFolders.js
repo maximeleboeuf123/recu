@@ -3,41 +3,33 @@ import { findOrCreateFolder } from './driveClient.js'
 const DRIVE_API = 'https://www.googleapis.com/drive/v3'
 
 /**
- * Resolve (or lazily create) the Drive folder for a receipt given its labels and invoice_date.
- * Returns the leaf folder ID. Falls back up the hierarchy if data is missing.
- * All DB mutations are best-effort (no throws propagated to caller).
- *
- * Hierarchy: _Receipts/{AccountName}/{Year}/{CategoryName}
+ * Resolve (or lazily create) the Drive folder for a confirmed receipt.
+ * Hierarchy: Récu/{Account}/_receipts/{Year}/{Category}
+ * Falls back up the chain if data is missing.
+ * Receipts with no account go to Récu/_unassigned/_receipts/{Year}/.
  */
 export async function ensureReceiptFolder(serviceClient, userId, accessToken, labels, invoiceDate) {
-  // 1. Get drive_inbox_id from users
   const { data: userData } = await serviceClient
     .from('users')
-    .select('drive_inbox_id')
+    .select('drive_folder_id')
     .eq('id', userId)
     .maybeSingle()
 
-  const inboxId = userData?.drive_inbox_id
-  if (!inboxId) return null
+  const rootId = userData?.drive_folder_id
+  if (!rootId) return null
 
-  const accountName = labels?.property
+  const accountName = labels?.property || '_unassigned'
   const categoryName = labels?.category
 
-  // 2. Resolve year from invoice_date
-  let year = null
+  let year = new Date().getFullYear()
   if (invoiceDate) {
     const parsed = new Date(invoiceDate)
-    if (!isNaN(parsed.getTime())) {
-      year = parsed.getFullYear()
-    }
+    if (!isNaN(parsed.getTime())) year = parsed.getFullYear()
   }
-  if (!year) year = new Date().getFullYear()
 
-  // 3. If no account name, return inbox as fallback
-  if (!accountName) return inboxId
-
-  // 4. Resolve account folder (find existing in dimensions, or create)
+  // Récu/{Account}/
   let accountFolderId = null
+  let dimensionId = null
   try {
     const { data: dim } = await serviceClient
       .from('dimensions')
@@ -47,41 +39,35 @@ export async function ensureReceiptFolder(serviceClient, userId, accessToken, la
       .eq('name', accountName)
       .maybeSingle()
 
-    if (dim) {
-      if (dim.drive_folder_id) {
-        accountFolderId = dim.drive_folder_id
-      } else {
-        // Create and persist
-        const folder = await findOrCreateFolder(accessToken, accountName, inboxId)
-        accountFolderId = folder.id
-        await serviceClient
-          .from('dimensions')
-          .update({ drive_folder_id: folder.id })
-          .eq('id', dim.id)
-      }
+    dimensionId = dim?.id ?? null
+
+    if (dim?.drive_folder_id) {
+      accountFolderId = dim.drive_folder_id
     } else {
-      // No dimension row — create folder anyway
-      const folder = await findOrCreateFolder(accessToken, accountName, inboxId)
+      const folder = await findOrCreateFolder(accessToken, accountName, rootId)
       accountFolderId = folder.id
+      if (dim) {
+        await serviceClient.from('dimensions').update({ drive_folder_id: folder.id }).eq('id', dim.id)
+      }
     }
   } catch (e) {
     console.error('ensureReceiptFolder: account folder error:', e.message)
-    return inboxId
+    return rootId
   }
 
-  // 5. Resolve year folder (drive_year_folders table)
+  // Récu/{Account}/_receipts/
+  let receiptsFolderId = null
+  try {
+    const receiptsFolder = await findOrCreateFolder(accessToken, '_receipts', accountFolderId)
+    receiptsFolderId = receiptsFolder.id
+  } catch (e) {
+    console.error('ensureReceiptFolder: _receipts folder error:', e.message)
+    return accountFolderId
+  }
+
+  // Récu/{Account}/_receipts/{Year}/
   let yearFolderId = null
   try {
-    const { data: dim } = await serviceClient
-      .from('dimensions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('type', 'account')
-      .eq('name', accountName)
-      .maybeSingle()
-
-    const dimensionId = dim?.id
-
     if (dimensionId) {
       const { data: yearRow } = await serviceClient
         .from('drive_year_folders')
@@ -94,7 +80,7 @@ export async function ensureReceiptFolder(serviceClient, userId, accessToken, la
       if (yearRow?.drive_folder_id) {
         yearFolderId = yearRow.drive_folder_id
       } else {
-        const yearFolder = await findOrCreateFolder(accessToken, String(year), accountFolderId)
+        const yearFolder = await findOrCreateFolder(accessToken, String(year), receiptsFolderId)
         yearFolderId = yearFolder.id
         await serviceClient.from('drive_year_folders').upsert({
           user_id: userId,
@@ -104,18 +90,17 @@ export async function ensureReceiptFolder(serviceClient, userId, accessToken, la
         })
       }
     } else {
-      // No dimension ID — create year folder without storing
-      const yearFolder = await findOrCreateFolder(accessToken, String(year), accountFolderId)
+      const yearFolder = await findOrCreateFolder(accessToken, String(year), receiptsFolderId)
       yearFolderId = yearFolder.id
     }
   } catch (e) {
     console.error('ensureReceiptFolder: year folder error:', e.message)
-    return accountFolderId
+    return receiptsFolderId
   }
 
-  // 6. Resolve category folder (lazy, not stored)
   if (!categoryName) return yearFolderId
 
+  // Récu/{Account}/_receipts/{Year}/{Category}/
   try {
     const categoryFolder = await findOrCreateFolder(accessToken, categoryName, yearFolderId)
     return categoryFolder.id
@@ -125,12 +110,7 @@ export async function ensureReceiptFolder(serviceClient, userId, accessToken, la
   }
 }
 
-/**
- * Move a Drive file from its current parent(s) to newFolderId.
- * Uses PATCH /files/{fileId}?addParents=&removeParents=
- */
 export async function moveFile(accessToken, fileId, newFolderId) {
-  // First, GET file metadata to find current parents
   const metaRes = await fetch(`${DRIVE_API}/files/${fileId}?fields=parents`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
@@ -144,10 +124,7 @@ export async function moveFile(accessToken, fileId, newFolderId) {
     `${DRIVE_API}/files/${fileId}?addParents=${newFolderId}&removeParents=${currentParents}&fields=id,parents`,
     {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     }
   )
@@ -157,17 +134,10 @@ export async function moveFile(accessToken, fileId, newFolderId) {
   return patchRes.json()
 }
 
-/**
- * Rename a Drive file or folder.
- * Uses PATCH /files/{id} with { name }
- */
 export async function renameFile(accessToken, fileId, newName) {
   const res = await fetch(`${DRIVE_API}/files/${fileId}?fields=id,name`, {
     method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: newName }),
   })
   if (!res.ok) {

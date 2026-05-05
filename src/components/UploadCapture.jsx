@@ -176,8 +176,8 @@ export default function UploadCapture({ onSubmit, onClose, initialFiles }) {
           </div>
         </label>
 
-        {/* Camera multi-page button */}
-        <div className="w-full max-w-xs">
+        {/* Camera multi-page button — mobile only */}
+        <div className="w-full max-w-xs sm:hidden">
           <input
             ref={cameraRef}
             type="file"

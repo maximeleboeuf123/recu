@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   const state = req.headers['x-goog-resource-state']
 
   if (!channelId || !userId) return
-  if (state === 'sync') return // Initial handshake — no work to do
+  if (state === 'sync') return
 
   try {
     await processDropZone(channelId, userId)
@@ -37,44 +37,45 @@ async function processDropZone(channelId, userId) {
 
   const { data: userData } = await serviceClient
     .from('users')
-    .select('drive_watch_channel_id, drive_to_process_id, drive_review_folder_id')
+    .select('drive_watch_channel_id, drive_folder_id')
     .eq('id', userId)
     .single()
 
   if (!userData || userData.drive_watch_channel_id !== channelId) return
-  if (!userData.drive_to_process_id) return
+  if (!userData.drive_folder_id) return
 
   const accessToken = await getValidToken(userId, serviceClient)
   if (!accessToken) return
 
-  const toProcessId = userData.drive_to_process_id
-  const reviewRootId = userData.drive_review_folder_id
+  const rootId = userData.drive_folder_id
 
-  // Collect all files in _to_process/ (root + account sub-folders)
+  // List all account folders under Récu/
+  const accountFolders = await listSubfolders(accessToken, rootId)
+  if (!accountFolders.length) return
+
+  // Collect files from {Account}/_to_process/ across all accounts
   const allFiles = []
-  const [rootContents, subfolders] = await Promise.all([
-    listFolderContents(accessToken, toProcessId),
-    listSubfolders(accessToken, toProcessId),
-  ])
+  for (const accFolder of accountFolders) {
+    try {
+      // Find _to_process/ inside this account folder
+      const subfolders = await listSubfolders(accessToken, accFolder.id)
+      const toProcessFolder = subfolders.find(f => f.name === '_to_process')
+      if (!toProcessFolder) continue
 
-  for (const item of rootContents) {
-    if (item.mimeType !== 'application/vnd.google-apps.folder') {
-      allFiles.push({ ...item, accountName: null })
-    }
-  }
-
-  for (const subfolder of subfolders) {
-    const contents = await listFolderContents(accessToken, subfolder.id)
-    for (const item of contents) {
-      if (item.mimeType !== 'application/vnd.google-apps.folder') {
-        allFiles.push({ ...item, accountName: subfolder.name })
+      const contents = await listFolderContents(accessToken, toProcessFolder.id)
+      for (const item of contents) {
+        if (item.mimeType !== 'application/vnd.google-apps.folder') {
+          allFiles.push({ ...item, accountName: accFolder.name, accFolderId: accFolder.id })
+        }
       }
+    } catch (e) {
+      console.error(`drive/ingest: error listing _to_process for "${accFolder.name}":`, e?.message)
     }
   }
 
   if (!allFiles.length) return
 
-  // Find which files are already processed
+  // Dedup against already-processed files
   const { data: processedRows } = await serviceClient
     .from('drive_processed_files')
     .select('drive_file_id')
@@ -89,10 +90,9 @@ async function processDropZone(channelId, userId) {
 
   for (const file of toProcess) {
     try {
-      await processFile({ file, userId, serviceClient, accessToken, anthropic, patterns, reviewRootId })
+      await processFile({ file, userId, serviceClient, accessToken, anthropic, patterns })
     } catch (e) {
       console.error('drive/ingest: failed to process file:', file.id, e?.message)
-      // Mark as processed anyway to avoid infinite retry loops
       await serviceClient.from('drive_processed_files')
         .insert({ user_id: userId, drive_file_id: file.id })
         .onConflict('drive_file_id').ignore()
@@ -100,8 +100,7 @@ async function processDropZone(channelId, userId) {
   }
 }
 
-async function processFile({ file, userId, serviceClient, accessToken, anthropic, patterns, reviewRootId }) {
-  // Skip unsupported file types — mark processed so we don't retry
+async function processFile({ file, userId, serviceClient, accessToken, anthropic, patterns }) {
   if (!ALLOWED_MIME.has(file.mimeType)) {
     await serviceClient.from('drive_processed_files')
       .insert({ user_id: userId, drive_file_id: file.id })
@@ -109,7 +108,6 @@ async function processFile({ file, userId, serviceClient, accessToken, anthropic
     return
   }
 
-  // Download file
   const { base64, mimeType, size } = await downloadFileContent(accessToken, file.id)
   if (size > MAX_FILE_BYTES) {
     await serviceClient.from('drive_processed_files')
@@ -118,7 +116,6 @@ async function processFile({ file, userId, serviceClient, accessToken, anthropic
     return
   }
 
-  // Extract with Claude
   const claudeContent = mimeType === 'application/pdf'
     ? [{ type: 'document', source: { type: 'base64', media_type: mimeType, data: base64 } }, { type: 'text', text: EXTRACT_PROMPT }]
     : [{ type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } }, { type: 'text', text: EXTRACT_PROMPT }]
@@ -141,11 +138,12 @@ async function processFile({ file, userId, serviceClient, accessToken, anthropic
   const confidenceScores = applyTaxCalculations(extracted)
   const patternMatch = findPatternMatch(patterns, extracted.vendor)
 
-  // Labels: prefer pattern match, fall back to account subfolder name
+  // Labels: pattern match takes priority, then the source account folder
   const labels = patternMatch?.labels ?? {}
-  if (file.accountName && !labels.property) labels.property = file.accountName
+  if (!labels.property && file.accountName !== '_unassigned') {
+    labels.property = file.accountName
+  }
 
-  // Create pending receipt
   const { data: receipt, error } = await serviceClient.from('receipts').insert({
     user_id: userId,
     status: 'pending',
@@ -176,21 +174,14 @@ async function processFile({ file, userId, serviceClient, accessToken, anthropic
     return
   }
 
-  // Move file from _to_process/ to _for_review/{accountName}/
-  if (reviewRootId) {
-    try {
-      let targetFolderId = reviewRootId
-      if (labels.property) {
-        const accountFolder = await findOrCreateFolder(accessToken, labels.property, reviewRootId)
-        targetFolderId = accountFolder.id
-      }
-      await moveFile(accessToken, file.id, targetFolderId)
-    } catch (e) {
-      console.error('drive/ingest: move to _for_review failed (non-fatal):', e?.message)
-    }
+  // Move file from _to_process/ to _for_review/ within the same account folder
+  try {
+    const reviewFolder = await findOrCreateFolder(accessToken, '_for_review', file.accFolderId)
+    await moveFile(accessToken, file.id, reviewFolder.id)
+  } catch (e) {
+    console.error('drive/ingest: move to _for_review failed (non-fatal):', e?.message)
   }
 
-  // Mark as processed
   await serviceClient.from('drive_processed_files')
     .insert({ user_id: userId, drive_file_id: file.id, receipt_id: receipt.id })
     .onConflict('drive_file_id').ignore()

@@ -8,6 +8,7 @@ import { useReceipts } from '../hooks/useReceipts'
 
 const LINKS = [
   { path: '/', key: 'home' },
+  { path: '/capture', key: 'upload' },
   { path: '/review', key: 'review' },
   { path: '/ledger', key: 'ledger' },
   { path: '/export', key: 'export' },

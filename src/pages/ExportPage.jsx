@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useReceipts } from '../hooks/useReceipts'
 import { useDrive } from '../hooks/useDrive'
 import { useDimensions } from '../context/DimensionsContext'
+import { useShares } from '../hooks/useShares'
 
 const EMPTY_FILTERS = {
   dateFrom: '', dateTo: '', account: '', category: '',
@@ -84,6 +85,11 @@ export default function ExportPage() {
   const { receipts, loading: receiptsLoading } = useReceipts()
   const { driveState, loading: driveLoading } = useDrive()
   const { accountsWithCategories } = useDimensions()
+  const { received: sharedWith } = useShares()
+  const sharedAccounts = useMemo(
+    () => sharedWith.filter(s => s.status === 'accepted').map(s => s.account_name),
+    [sharedWith]
+  )
 
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [format, setFormat] = useState('xlsx')
@@ -289,6 +295,11 @@ export default function ExportPage() {
                       <option value="">{lang === 'en' ? 'All' : 'Tous'}</option>
                       {accountsWithCategories.map((a) => (
                         <option key={a.id} value={a.name}>{a.name}</option>
+                      ))}
+                      {sharedAccounts.map(name => (
+                        <option key={`shared-${name}`} value={name}>
+                          {name} ({lang === 'en' ? 'shared' : 'partagé'})
+                        </option>
                       ))}
                     </select>
                   </div>

@@ -6,6 +6,7 @@ import { Pencil, AlertTriangle, Info, Plus, ChevronDown, FileText, X, Settings, 
 import RecurringFields from './RecurringFields'
 import DimensionRow from './DimensionRow'
 import { useDimensions } from '../context/DimensionsContext'
+import { useAllAccounts } from '../hooks/useAllAccounts'
 
 const CURRENCIES = ['CAD', 'USD', 'EUR', 'GBP', 'CHF', 'MXN']
 
@@ -23,6 +24,7 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   const { t, i18n } = useTranslation()
   const lang = i18n.language === 'en' ? 'en' : 'fr'
   const { accountsWithCategories } = useDimensions()
+  const allAccountOptions = useAllAccounts()
   const scores = receipt.confidence_scores || {}
   const conf = receipt.extracted_raw?.confidence || {}
 
@@ -127,7 +129,6 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
   }
 
   const selectedAccount = accountsWithCategories.find((a) => a.name === fields.label_property)
-  const accountNames = accountsWithCategories.map((a) => a.name)
   const showTaxFields = selectedAccount ? selectedAccount.show_taxes !== false : true
   const categoryOptions = selectedAccount
     ? selectedAccount.categories.map((c) => c.name)
@@ -296,7 +297,7 @@ export default function ReviewCard({ receipt, mode = 'review', onConfirm, onSkip
         <EditRow label={t('receipt.description')} value={fields.description} onSave={(v) => set('description', v)} />
 
         {/* Dimensions — Account & Category */}
-        <DimensionRow label={t('receipt.account')} value={fields.label_property} onChange={(v) => handleDimensionChange('label_property', v)} options={accountNames} />
+        <DimensionRow label={t('receipt.account')} value={fields.label_property} onChange={(v) => handleDimensionChange('label_property', v)} options={allAccountOptions} />
         <DimensionRow label={t('receipt.category')} value={fields.label_category} onChange={(v) => handleDimensionChange('label_category', v)} options={categoryOptions} dimmed={accountsWithCategories.length > 0 && !fields.label_property} />
 
         <EditRow

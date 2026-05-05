@@ -1,16 +1,18 @@
 import { getUserFromReq, getServiceClient } from '../lib/auth.js'
 import { getValidToken, findOrCreateFolder } from '../lib/driveClient.js'
 
+const ACCOUNT_SUBFOLDERS = ['_receipts', '_for_review', '_to_process', '_export']
+
 /**
  * POST /api/drive/sync-dimensions
  *
- * Compares the dimensions table against the Drive folder tree and creates any
- * missing folders. Never deletes or moves any files or folders.
- *
- * Folder structure: _Receipts/{Account}/{Year}/{Category}
- * - Account folders: stored in dimensions.drive_folder_id
- * - Year folders: stored in drive_year_folders
- * - Category folders: created on demand, not stored (multiple years possible)
+ * Ensures the Drive folder tree matches the current dimensions.
+ * New structure: Récu/{Account}/_receipts/{Year}/{Category}
+ *                Récu/{Account}/_for_review
+ *                Récu/{Account}/_to_process
+ *                Récu/{Account}/_export
+ * The _unassigned account is always included.
+ * Never deletes or moves files.
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -23,12 +25,12 @@ export default async function handler(req, res) {
 
     const { data: userData } = await serviceClient
       .from('users')
-      .select('drive_inbox_id, drive_folder_id, drive_review_folder_id, drive_to_process_id')
+      .select('drive_folder_id')
       .eq('id', user.userId)
       .single()
 
-    const inboxId = userData?.drive_inbox_id || userData?.drive_folder_id
-    if (!inboxId) return res.status(200).json({ skipped: 'drive not connected' })
+    const rootId = userData?.drive_folder_id
+    if (!rootId) return res.status(200).json({ skipped: 'drive not connected' })
 
     const accessToken = await getValidToken(user.userId, serviceClient)
     if (!accessToken) return res.status(200).json({ skipped: 'no drive token' })
@@ -38,22 +40,24 @@ export default async function handler(req, res) {
       .select('id, type, name, parent_id, drive_folder_id')
       .eq('user_id', user.userId)
 
-    if (!dimensions?.length) return res.status(200).json({ created: 0 })
+    const accounts = (dimensions || []).filter(d => d.type === 'account')
+    const categories = (dimensions || []).filter(d => d.type === 'category')
 
-    const accounts = dimensions.filter((d) => d.type === 'account')
-    const categories = dimensions.filter((d) => d.type === 'category')
+    // Always include _unassigned
+    const hasUnassigned = accounts.some(a => a.name === '_unassigned')
+    if (!hasUnassigned) {
+      accounts.push({ id: null, name: '_unassigned', drive_folder_id: null })
+    }
 
     const currentYear = new Date().getFullYear()
     let created = 0
 
-    const reviewRootId = userData?.drive_review_folder_id
-    const toProcessRootId = userData?.drive_to_process_id
-
     for (const acc of accounts) {
       try {
-        // 1. Account folder under _Receipts/
-        const accFolder = await findOrCreateFolder(accessToken, acc.name, inboxId)
-        if (acc.drive_folder_id !== accFolder.id) {
+        // 1. Account root: Récu/{Account}/
+        const accFolder = await findOrCreateFolder(accessToken, acc.name, rootId)
+
+        if (acc.id && acc.drive_folder_id !== accFolder.id) {
           await serviceClient
             .from('dimensions')
             .update({ drive_folder_id: accFolder.id })
@@ -61,30 +65,31 @@ export default async function handler(req, res) {
           created++
         }
 
-        // 2. Current year folder
-        const yearFolder = await findOrCreateFolder(accessToken, String(currentYear), accFolder.id)
-        await serviceClient.from('drive_year_folders').upsert({
-          user_id: user.userId,
-          dimension_id: acc.id,
-          year: currentYear,
-          drive_folder_id: yearFolder.id,
-        })
+        // 2. Standard subfolders under account
+        const subFolders = await Promise.all(
+          ACCOUNT_SUBFOLDERS.map(name => findOrCreateFolder(accessToken, name, accFolder.id))
+        )
+        const receiptsFolder = subFolders[0] // _receipts is first
 
-        // 3. Category folders under current year
-        const accCats = categories.filter((c) => c.parent_id === acc.id)
-        for (const cat of accCats) {
-          await findOrCreateFolder(accessToken, cat.name, yearFolder.id)
-          created++
+        // 3. Current year folder under _receipts/
+        const yearFolder = await findOrCreateFolder(accessToken, String(currentYear), receiptsFolder.id)
+
+        if (acc.id) {
+          await serviceClient.from('drive_year_folders').upsert({
+            user_id: user.userId,
+            dimension_id: acc.id,
+            year: currentYear,
+            drive_folder_id: yearFolder.id,
+          })
         }
 
-        // 4. Mirror account folder under _for_review/ and _to_process/
-        if (reviewRootId) {
-          await findOrCreateFolder(accessToken, acc.name, reviewRootId)
-          created++
-        }
-        if (toProcessRootId) {
-          await findOrCreateFolder(accessToken, acc.name, toProcessRootId)
-          created++
+        // 4. Category folders under current year
+        if (acc.id) {
+          const accCats = categories.filter(c => c.parent_id === acc.id)
+          for (const cat of accCats) {
+            await findOrCreateFolder(accessToken, cat.name, yearFolder.id)
+            created++
+          }
         }
       } catch (e) {
         console.error(`sync-dimensions: failed for "${acc.name}":`, e.message)

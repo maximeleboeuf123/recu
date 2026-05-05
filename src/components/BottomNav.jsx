@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, Upload, ClipboardList, BookOpen, FileSpreadsheet, Settings } from 'lucide-react'
 
-export default function BottomNav({ pendingCount = 0 }) {
+export default function BottomNav({ pendingCount = 0, sharesCount = 0 }) {
   const { t } = useTranslation()
   const location = useLocation()
 
@@ -22,7 +22,11 @@ export default function BottomNav({ pendingCount = 0 }) {
     >
       {tabs.map(({ path, iconKey, Icon }) => {
         const active = location.pathname === path
-        const badge = iconKey === 'review' && pendingCount > 0 ? pendingCount : null
+        const badge = iconKey === 'review' && pendingCount > 0
+          ? pendingCount
+          : iconKey === 'settings' && sharesCount > 0
+          ? sharesCount
+          : null
 
         return (
           <Link

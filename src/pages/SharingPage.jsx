@@ -8,7 +8,7 @@ import { useDimensions } from '../context/DimensionsContext'
 export default function SharingPage() {
   const { i18n } = useTranslation()
   const lang = i18n.language?.startsWith('fr') ? 'fr' : 'en'
-  const { owned, loading, createShare, revokeShare } = useShares()
+  const { owned, received, loading, createShare, revokeShare } = useShares()
   const { accountsWithCategories } = useDimensions()
 
   const [form, setForm] = useState({ account_name: '', email: '', permission: 'edit' })
@@ -177,6 +177,27 @@ export default function SharingPage() {
         <p className="text-sm text-muted text-center py-4">
           {lang === 'fr' ? 'Aucun compte partagé pour l\'instant.' : 'No accounts shared yet.'}
         </p>
+      )}
+
+      {/* Shared with me */}
+      {!loading && received.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted uppercase tracking-wide font-medium">
+            {lang === 'fr' ? 'Partagé avec moi' : 'Shared with me'}
+          </p>
+          {received.map(s => (
+            <div key={s.id} className="bg-indigo-50 border border-indigo-100 rounded-[8px] p-4">
+              <p className="text-sm font-semibold text-[#1A1A18]">{s.account_name}</p>
+              <p className="text-xs text-muted mt-0.5">
+                {lang === 'fr' ? 'Partagé par' : 'Shared by'} {s.owner_email}
+                {' · '}
+                {s.permission === 'edit'
+                  ? (lang === 'fr' ? 'Peut modifier' : 'Can edit')
+                  : (lang === 'fr' ? 'Lecture seule' : 'View only')}
+              </p>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )

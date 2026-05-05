@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { X, ChevronDown, Settings } from 'lucide-react'
@@ -12,10 +12,14 @@ export default function DimensionRow({ label, value, onChange, options = [], dim
 
   if (!open && localVal !== value) setLocalVal(value)
 
-  const filtered = options.filter(
-    (o) => !localVal || o.toLowerCase().includes(localVal.toLowerCase())
+  const normalized = useMemo(() =>
+    options.map(o => typeof o === 'string' ? { value: o, label: o, isShared: false } : o),
+  [options])
+
+  const filtered = normalized.filter(
+    (o) => !localVal || o.label.toLowerCase().includes(localVal.toLowerCase())
   )
-  const showDropdown = open && (filtered.length > 0 || options.length === 0)
+  const showDropdown = open && (filtered.length > 0 || normalized.length === 0)
 
   const commit = (val) => { onChange(val); setLocalVal(val); setOpen(false) }
 
@@ -44,16 +48,20 @@ export default function DimensionRow({ label, value, onChange, options = [], dim
         <div className="border-t border-border/60 bg-background/60">
           {filtered.map((opt) => (
             <button
-              key={opt}
-              onMouseDown={() => commit(opt)}
+              key={opt.value}
+              onMouseDown={() => commit(opt.value)}
               className={`w-full text-left px-4 py-2 text-sm border-b border-border/40 last:border-0 transition-colors ${
-                opt === localVal ? 'text-primary font-medium bg-primary/5' : 'text-[#1A1A18] hover:bg-surface'
+                opt.value === localVal
+                  ? 'text-primary font-medium bg-primary/5'
+                  : opt.isShared
+                  ? 'text-indigo-600 hover:bg-indigo-50/60'
+                  : 'text-[#1A1A18] hover:bg-surface'
               }`}
             >
-              {opt}
+              {opt.label}
             </button>
           ))}
-          {options.length === 0 && (
+          {normalized.length === 0 && (
             <p className="px-4 py-2 text-xs text-muted italic">
               {lang === 'en' ? 'No options yet' : 'Aucune option'}
             </p>
