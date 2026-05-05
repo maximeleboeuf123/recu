@@ -83,33 +83,26 @@ export default async function handler(req, res) {
     { global: { headers: { Authorization: `Bearer ${token}` } } }
   )
 
-  // GET — return owned + received; auto-accept pending shares and grant Drive access
+  // GET — return owned + received (pending + accepted); link share rows to userId for non-users
   if (req.method === 'GET') {
+    // Link any rows that were created before the user signed up (shared_with_id was null)
     if (userEmail) {
-      const { data: pending } = await serviceClient
+      const { data: unlinked } = await serviceClient
         .from('account_shares')
-        .select('id, owner_id, account_name, permission, shared_with_email')
+        .select('id')
         .eq('shared_with_email', userEmail.toLowerCase())
         .is('shared_with_id', null)
-
-      for (const share of pending || []) {
-        const perms = await grantAccountDrive(
-          share.owner_id, share.account_name, share.shared_with_email, share.permission, serviceClient
-        )
+      for (const row of unlinked || []) {
         await serviceClient
           .from('account_shares')
-          .update({
-            shared_with_id: userId,
-            status: 'accepted',
-            ...(perms.main ? { drive_permission_id: perms.main } : {}),
-          })
-          .eq('id', share.id)
+          .update({ shared_with_id: userId })
+          .eq('id', row.id)
       }
     }
 
     const [{ data: owned }, { data: received }] = await Promise.all([
       anonClient.from('account_shares').select('*').eq('owner_id', userId).order('account_name'),
-      anonClient.from('account_shares').select('*').eq('shared_with_id', userId).eq('status', 'accepted').order('account_name'),
+      anonClient.from('account_shares').select('*').eq('shared_with_id', userId).in('status', ['pending', 'accepted']).order('account_name'),
     ])
 
     return res.status(200).json({ owned: owned || [], received: received || [] })
@@ -136,7 +129,7 @@ export default async function handler(req, res) {
     const { data: recipientId } = await serviceClient
       .rpc('get_user_id_by_email', { lookup_email: shared_with_email.toLowerCase() })
 
-    const isAccepted = !!recipientId
+    // Always start as 'pending' — recipient must explicitly accept
     const shareRow = {
       owner_id: userId,
       owner_email: userEmail,
@@ -144,7 +137,7 @@ export default async function handler(req, res) {
       shared_with_id: recipientId || null,
       account_name: account_name.trim(),
       permission,
-      status: isAccepted ? 'accepted' : 'pending',
+      status: 'pending',
     }
 
     const { data: share, error } = await anonClient
@@ -155,21 +148,6 @@ export default async function handler(req, res) {
 
     if (error?.code === '23505') return res.status(409).json({ error: 'already_shared' })
     if (error) { console.error('shares insert:', error); return res.status(500).json({ error: 'db_error' }) }
-
-    // Grant Drive folder access immediately if share is accepted
-    if (isAccepted) {
-      try {
-        const perms = await grantAccountDrive(
-          userId, account_name.trim(), shared_with_email.toLowerCase(), permission, serviceClient
-        )
-        if (perms.main) {
-          await serviceClient.from('account_shares').update({ drive_permission_id: perms.main }).eq('id', share.id)
-          Object.assign(share, { drive_permission_id: perms.main })
-        }
-      } catch (e) {
-        console.error('shares: Drive grant post-insert (non-fatal):', e?.message)
-      }
-    }
 
     // Email invite for non-users
     if (!recipientId && process.env.POSTMARK_API_KEY) {
@@ -207,32 +185,82 @@ export default async function handler(req, res) {
     return res.status(200).json({ share })
   }
 
-  // DELETE — revoke Drive access then remove the share row
+  // PATCH — recipient accepts or declines a pending share
+  if (req.method === 'PATCH') {
+    let body
+    try { body = await parseBody(req) } catch { return res.status(400).json({ error: 'bad_request' }) }
+    const { id, action } = body || {}
+    if (!id || !['accept', 'decline'].includes(action)) {
+      return res.status(400).json({ error: 'missing_fields' })
+    }
+
+    const { data: share } = await serviceClient
+      .from('account_shares')
+      .select('id, owner_id, account_name, permission, shared_with_email, status')
+      .eq('id', id)
+      .eq('shared_with_id', userId)
+      .maybeSingle()
+
+    if (!share) return res.status(404).json({ error: 'not_found' })
+
+    if (action === 'decline') {
+      await serviceClient.from('account_shares').delete().eq('id', id)
+      return res.status(200).end()
+    }
+
+    // Accept: grant Drive access, mark accepted
+    const perms = await grantAccountDrive(
+      share.owner_id, share.account_name, share.shared_with_email, share.permission, serviceClient
+    )
+    await serviceClient
+      .from('account_shares')
+      .update({ status: 'accepted', ...(perms.main ? { drive_permission_id: perms.main } : {}) })
+      .eq('id', id)
+
+    return res.status(200).json({ ok: true })
+  }
+
+  // DELETE — owner revokes a share OR recipient removes their own access
   if (req.method === 'DELETE') {
     const id = req.query?.id
     if (!id) return res.status(400).json({ error: 'missing_id' })
 
-    const { data: existing } = await serviceClient
+    // Try owner revoke first
+    const { data: asOwner } = await serviceClient
       .from('account_shares')
       .select('owner_id, account_name, drive_permission_id')
       .eq('id', id)
       .eq('owner_id', userId)
-      .single()
+      .maybeSingle()
 
-    if (existing) {
-      await revokeAccountDrive(existing.owner_id, existing.account_name, {
-        main: existing.drive_permission_id,
+    if (asOwner) {
+      await revokeAccountDrive(asOwner.owner_id, asOwner.account_name, {
+        main: asOwner.drive_permission_id,
       }, serviceClient)
+      await serviceClient.from('account_shares').delete().eq('id', id)
+      return res.status(200).end()
     }
 
-    const { error } = await anonClient
+    // Recipient leaving their own shared access
+    const { data: asRecipient } = await serviceClient
       .from('account_shares')
-      .delete()
+      .select('id, owner_id, account_name, drive_permission_id')
       .eq('id', id)
-      .eq('owner_id', userId)
+      .eq('shared_with_id', userId)
+      .maybeSingle()
 
-    if (error) return res.status(500).json({ error: 'db_error' })
-    return res.status(200).end()
+    if (asRecipient) {
+      // Revoke the Drive permission granted to this user
+      if (asRecipient.drive_permission_id) {
+        await revokeAccountDrive(asRecipient.owner_id, asRecipient.account_name, {
+          main: asRecipient.drive_permission_id,
+        }, serviceClient)
+      }
+      await serviceClient.from('account_shares').delete().eq('id', id)
+      return res.status(200).end()
+    }
+
+    return res.status(404).json({ error: 'not_found' })
   }
 
   return res.status(405).end()

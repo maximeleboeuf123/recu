@@ -18,34 +18,22 @@ function useIsDesktop() {
   return isDesktop
 }
 
-function getAckedIds() {
-  try { return new Set(JSON.parse(localStorage.getItem('recu_acked_shares') || '[]')) }
-  catch { return new Set() }
-}
-
 export default function Layout() {
   const isDesktop = useIsDesktop()
   const { pendingCount } = useReceipts()
   const { received } = useShares()
 
-  const [ackedIds, setAckedIds] = useState(() => getAckedIds())
-  const [showShareModal, setShowShareModal] = useState(false)
-
-  const unacknowledged = useMemo(
-    () => received.filter(s => !ackedIds.has(s.id)),
-    [received, ackedIds]
+  // Show modal for pending (unaccepted) invitations
+  const pendingInvites = useMemo(
+    () => received.filter(s => s.status === 'pending'),
+    [received]
   )
 
-  useEffect(() => {
-    if (unacknowledged.length > 0) setShowShareModal(true)
-  }, [unacknowledged.length])
+  const [showShareModal, setShowShareModal] = useState(false)
 
-  const handleDismiss = () => {
-    const newAcked = new Set([...ackedIds, ...received.map(s => s.id)])
-    localStorage.setItem('recu_acked_shares', JSON.stringify([...newAcked]))
-    setAckedIds(newAcked)
-    setShowShareModal(false)
-  }
+  useEffect(() => {
+    if (pendingInvites.length > 0) setShowShareModal(true)
+  }, [pendingInvites.length])
 
   return (
     <div className="min-h-screen bg-background">
@@ -59,8 +47,13 @@ export default function Layout() {
       >
         <Outlet />
       </main>
-      {!isDesktop && <BottomNav pendingCount={pendingCount} sharesCount={unacknowledged.length} />}
-      {showShareModal && <ShareInviteModal shares={unacknowledged} onDismiss={handleDismiss} />}
+      {!isDesktop && <BottomNav pendingCount={pendingCount} sharesCount={pendingInvites.length} />}
+      {showShareModal && (
+        <ShareInviteModal
+          shares={pendingInvites}
+          onDone={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   )
 }

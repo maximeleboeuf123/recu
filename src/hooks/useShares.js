@@ -51,5 +51,39 @@ export function useShares() {
     setOwned(prev => prev.filter(s => s.id !== id))
   }, [session?.access_token])
 
-  return { owned, received, loading, createShare, revokeShare, refresh: fetchShares }
+  const acceptShare = useCallback(async (id) => {
+    try {
+      const res = await fetch('/api/shares', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ id, action: 'accept' }),
+      })
+      if (!res.ok) return { error: 'failed' }
+      setReceived(prev => prev.map(s => s.id === id ? { ...s, status: 'accepted' } : s))
+      return {}
+    } catch { return { error: 'network_error' } }
+  }, [session?.access_token])
+
+  const declineShare = useCallback(async (id) => {
+    try {
+      await fetch('/api/shares', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ id, action: 'decline' }),
+      })
+      setReceived(prev => prev.filter(s => s.id !== id))
+    } catch { /* non-fatal */ }
+  }, [session?.access_token])
+
+  const leaveShare = useCallback(async (id) => {
+    try {
+      await fetch(`/api/shares?id=${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      setReceived(prev => prev.filter(s => s.id !== id))
+    } catch { /* non-fatal */ }
+  }, [session?.access_token])
+
+  return { owned, received, loading, createShare, revokeShare, acceptShare, declineShare, leaveShare, refresh: fetchShares }
 }

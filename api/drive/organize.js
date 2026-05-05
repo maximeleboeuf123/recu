@@ -37,9 +37,24 @@ export default async function handler(req, res) {
     if (!receipt) return res.status(404).json({ error: 'Receipt not found' })
     if (!receipt.drive_file_id) return res.status(200).json({ success: true, skipped: 'no drive_file_id' })
 
-    // Get valid Drive token
+    // Get valid Drive token (guest's own token — they have write access to shared folders)
     const accessToken = await getValidToken(user.userId, serviceClient)
     if (!accessToken) return res.status(200).json({ success: true, skipped: 'no drive token' })
+
+    // Resolve which user's dimension data / Drive root to use.
+    // For receipts assigned to a shared account, folder IDs live under the owner's rows.
+    let driveUserId = user.userId
+    const accountName = receipt.labels?.property
+    if (accountName) {
+      const { data: share } = await serviceClient
+        .from('account_shares')
+        .select('owner_id')
+        .eq('shared_with_id', user.userId)
+        .eq('account_name', accountName)
+        .eq('status', 'accepted')
+        .maybeSingle()
+      if (share?.owner_id) driveUserId = share.owner_id
+    }
 
     // Build final filename: {YYYY-MM-DD}_{vendor}_{original_filename}
     // Strip any tmp_*_ prefix from filename
@@ -71,7 +86,7 @@ export default async function handler(req, res) {
     try {
       targetFolderId = await ensureReceiptFolder(
         serviceClient,
-        user.userId,
+        driveUserId,
         accessToken,
         receipt.labels,
         receipt.invoice_date

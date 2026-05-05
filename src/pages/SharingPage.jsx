@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, Plus, X } from 'lucide-react'
+import { ChevronLeft, Plus, X, Check } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useShares } from '../hooks/useShares'
 import { useDimensions } from '../context/DimensionsContext'
@@ -8,7 +8,8 @@ import { useDimensions } from '../context/DimensionsContext'
 export default function SharingPage() {
   const { i18n } = useTranslation()
   const lang = i18n.language?.startsWith('fr') ? 'fr' : 'en'
-  const { owned, received, loading, createShare, revokeShare } = useShares()
+  const { owned, received, loading, createShare, revokeShare, acceptShare, declineShare, leaveShare } = useShares()
+  const [actingId, setActingId] = useState(null)
   const { accountsWithCategories } = useDimensions()
 
   const [form, setForm] = useState({ account_name: '', email: '', permission: 'edit' })
@@ -189,15 +190,49 @@ export default function SharingPage() {
             {lang === 'fr' ? 'Partagé avec moi' : 'Shared with me'}
           </p>
           {received.map(s => (
-            <div key={s.id} className="bg-indigo-50 border border-indigo-100 rounded-[8px] p-4">
-              <p className="text-sm font-semibold text-[#1A1A18]">{s.account_name}</p>
-              <p className="text-xs text-muted mt-0.5">
-                {lang === 'fr' ? 'Partagé par' : 'Shared by'} {s.owner_email}
-                {' · '}
-                {s.permission === 'edit'
-                  ? (lang === 'fr' ? 'Peut modifier' : 'Can edit')
-                  : (lang === 'fr' ? 'Lecture seule' : 'View only')}
-              </p>
+            <div key={s.id} className="bg-indigo-50 border border-indigo-100 rounded-[10px] p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#1A1A18]">{s.account_name}</p>
+                  <p className="text-xs text-muted mt-0.5">
+                    {lang === 'fr' ? 'Partagé par' : 'Shared by'} {s.owner_email}
+                    {' · '}
+                    {s.permission === 'edit'
+                      ? (lang === 'fr' ? 'Peut modifier' : 'Can edit')
+                      : (lang === 'fr' ? 'Lecture seule' : 'View only')}
+                  </p>
+                </div>
+                {s.status === 'accepted' && (
+                  <button
+                    onClick={async () => { setActingId(s.id); await leaveShare(s.id); setActingId(null) }}
+                    disabled={actingId === s.id}
+                    className="flex-shrink-0 text-xs text-muted hover:text-error transition-colors disabled:opacity-40"
+                    title={lang === 'fr' ? 'Quitter ce partage' : 'Leave this share'}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {s.status === 'pending' && (
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={async () => { setActingId(s.id); await declineShare(s.id); setActingId(null) }}
+                    disabled={actingId === s.id}
+                    className="flex-1 py-1.5 text-xs font-medium border border-border rounded-[6px] text-muted hover:border-error hover:text-error transition-colors disabled:opacity-40"
+                  >
+                    {lang === 'fr' ? 'Refuser' : 'Decline'}
+                  </button>
+                  <button
+                    onClick={async () => { setActingId(s.id); await acceptShare(s.id); setActingId(null) }}
+                    disabled={actingId === s.id}
+                    className="flex-1 py-1.5 text-xs font-medium bg-primary text-white rounded-[6px] flex items-center justify-center gap-1 disabled:opacity-40"
+                  >
+                    <Check size={11} />
+                    {lang === 'fr' ? 'Accepter' : 'Accept'}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

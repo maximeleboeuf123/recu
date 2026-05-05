@@ -219,9 +219,25 @@ async function _handler(req, res) {
     if (userData?.drive_folder_id) {
       const accessToken = await getValidToken(userId, serviceClient)
       if (accessToken) {
-        // Route to {account}/_for_review/ (or _unassigned/_for_review/ if no pattern match)
+        // Route to {account}/_for_review/ (or _unassigned/_for_review/ if no pattern match).
+        // For shared accounts, use the owner's Drive root so the file lands in the right place.
         const accountName = patternMatch?.labels?.property || '_unassigned'
-        const accFolder = await findOrCreateFolder(accessToken, accountName, userData.drive_folder_id)
+        let driveRootId = userData.drive_folder_id
+        if (accountName !== '_unassigned') {
+          const { data: share } = await serviceClient
+            .from('account_shares')
+            .select('owner_id')
+            .eq('shared_with_id', userId)
+            .eq('account_name', accountName)
+            .eq('status', 'accepted')
+            .maybeSingle()
+          if (share?.owner_id) {
+            const { data: ownerData } = await serviceClient
+              .from('users').select('drive_folder_id').eq('id', share.owner_id).single()
+            if (ownerData?.drive_folder_id) driveRootId = ownerData.drive_folder_id
+          }
+        }
+        const accFolder = await findOrCreateFolder(accessToken, accountName, driveRootId)
         const reviewFolder = await findOrCreateFolder(accessToken, '_for_review', accFolder.id)
 
         const firstPage = pages[0]

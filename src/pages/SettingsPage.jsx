@@ -12,12 +12,7 @@ export default function SettingsPage() {
   const { session, signOut } = useAuth()
   const { driveState, loading: driveLoading, refresh: refreshDrive } = useDrive()
   const { received: sharedWithMe } = useShares()
-  const unackedSharesCount = (() => {
-    try {
-      const acked = new Set(JSON.parse(localStorage.getItem('recu_acked_shares') || '[]'))
-      return sharedWithMe.filter(s => !acked.has(s.id)).length
-    } catch { return 0 }
-  })()
+  const unackedSharesCount = sharedWithMe.filter(s => s.status === 'pending').length
   const [searchParams, setSearchParams] = useSearchParams()
   const [toast, setToast] = useState(null)
   const [inboxEmail, setInboxEmail] = useState(null)
