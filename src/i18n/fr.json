@@ -35,7 +35,9 @@
     "upload_title": "Ajouter un reçu",
     "upload_hint": "Photo, PDF ou fichier image · Extraction IA",
     "choose_file": "Choisir un fichier",
-    "formats": "JPG, PNG, HEIC, PDF — jusqu'à 20 Mo"
+    "formats": "JPG, PNG, HEIC, PDF — jusqu'à 20 Mo",
+    "camera_multipage": "Capture multi-pages (caméra)",
+    "camera_multipage_hint": "Capturez chaque page séparément, puis soumettez ensemble"
   },
   "review": {
     "title": "À réviser",

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 import LanguageToggle from '../components/LanguageToggle'
+import FlowDiagram from '../components/FlowDiagram'
 import { Sparkles, HardDrive, Mail, FileSpreadsheet, Shield, Lock } from 'lucide-react'
 
 const FEATURES = [
@@ -87,6 +88,14 @@ export default function LandingPage() {
           {lang === 'fr' ? 'Gratuit · Aucune carte de crédit' : 'Free · No credit card required'}
         </p>
       </main>
+
+      {/* Flow diagram */}
+      <section className="px-4 pt-2 pb-4 max-w-lg mx-auto w-full">
+        <p className="text-xs text-muted uppercase tracking-wide font-medium text-center mb-3">
+          {lang === 'fr' ? 'Comment ça marche' : 'How it works'}
+        </p>
+        <FlowDiagram lang={lang} />
+      </section>
 
       {/* Features */}
       <section className="px-4 pb-10 max-w-lg mx-auto w-full space-y-3">

@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Upload, X, FileText } from 'lucide-react'
+import { Upload, X, FileText, Camera, Plus, Check } from 'lucide-react'
 import { compressImage } from '../lib/imageUtils'
 
 function isPdf(file) {
@@ -10,8 +10,10 @@ function isPdf(file) {
 export default function UploadCapture({ onSubmit, onClose, initialFiles }) {
   const { t } = useTranslation()
   const inputRef = useRef(null)
+  const cameraRef = useRef(null)
   const [groupPrompt, setGroupPrompt] = useState(null)
   const [processing, setProcessing] = useState(false)
+  const [cameraFiles, setCameraFiles] = useState([])
 
   // Auto-process drag-dropped files only (no programmatic click — blocked on mobile)
   useEffect(() => {
@@ -24,6 +26,13 @@ export default function UploadCapture({ onSubmit, onClose, initialFiles }) {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
     processFiles(files)
+  }
+
+  const handleCameraInput = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setCameraFiles((prev) => [...prev, file])
   }
 
   const processFiles = (files) => {
@@ -56,6 +65,7 @@ export default function UploadCapture({ onSubmit, onClose, initialFiles }) {
   const handleGroups = async (groups) => {
     setProcessing(true)
     setGroupPrompt(null)
+    setCameraFiles([])
 
     const toPages = (files) =>
       Promise.all(
@@ -79,15 +89,40 @@ export default function UploadCapture({ onSubmit, onClose, initialFiles }) {
     onClose()
   }
 
+  const handleCameraAdd = () => {
+    cameraRef.current?.click()
+  }
+
+  const handleCameraDone = () => {
+    if (cameraFiles.length === 0) return
+    handleGroups([cameraFiles])
+  }
+
   if (processing) {
     return (
       <div className="fixed inset-0 bg-background z-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-center px-8">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-[#1A1A18] font-medium text-sm">{t('capture.processing')}</p>
+          <p className="text-[#1A1A18] font-medium text-sm">
+            {cameraFiles.length > 1
+              ? t('capture.processing_pages', { count: cameraFiles.length })
+              : t('capture.processing')}
+          </p>
           <p className="text-xs text-muted">{t('capture.processing_hint')}</p>
         </div>
       </div>
+    )
+  }
+
+  if (cameraFiles.length > 0) {
+    return (
+      <CameraMultiCapture
+        files={cameraFiles}
+        onAddPage={handleCameraAdd}
+        onDone={handleCameraDone}
+        onRemovePage={(i) => setCameraFiles((prev) => prev.filter((_, j) => j !== i))}
+        onCancel={() => setCameraFiles([])}
+      />
     )
   }
 
@@ -121,15 +156,11 @@ export default function UploadCapture({ onSubmit, onClose, initialFiles }) {
         </div>
 
         <div className="text-center space-y-1">
-          <p className="text-lg font-bold text-[#1A1A18]">
-            {t('capture.upload_title') || (t('capture.upload'))}
-          </p>
-          <p className="text-sm text-muted">
-            {t('capture.upload_hint') || 'Photo, PDF or image file · AI extraction'}
-          </p>
+          <p className="text-lg font-bold text-[#1A1A18]">{t('capture.upload_title')}</p>
+          <p className="text-sm text-muted">{t('capture.upload_hint')}</p>
         </div>
 
-        {/* The label wraps both the hidden input and the visible button — tap anywhere on the button triggers the picker */}
+        {/* File picker (gallery, files, single camera) */}
         <label className="w-full max-w-xs cursor-pointer">
           <input
             ref={inputRef}
@@ -141,13 +172,99 @@ export default function UploadCapture({ onSubmit, onClose, initialFiles }) {
           />
           <div className="w-full flex items-center justify-center gap-2 bg-primary text-white rounded-[10px] py-4 active:scale-[0.97] transition-transform shadow-sm select-none">
             <Upload size={18} strokeWidth={2} />
-            <span className="font-semibold text-sm">{t('capture.choose_file') || 'Choose file'}</span>
+            <span className="font-semibold text-sm">{t('capture.choose_file')}</span>
           </div>
         </label>
 
-        <p className="text-xs text-muted text-center">
-          {t('capture.formats') || 'JPG, PNG, HEIC, PDF — up to 20 MB'}
-        </p>
+        {/* Camera multi-page button */}
+        <div className="w-full max-w-xs">
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleCameraInput}
+          />
+          <button
+            onClick={handleCameraAdd}
+            className="w-full flex items-center justify-center gap-2 border border-border bg-surface text-[#1A1A18] rounded-[10px] py-3.5 active:scale-[0.97] transition-transform"
+          >
+            <Camera size={17} strokeWidth={1.8} className="text-muted" />
+            <span className="text-sm font-medium">{t('capture.camera_multipage')}</span>
+          </button>
+          <p className="text-[11px] text-muted text-center mt-1.5">{t('capture.camera_multipage_hint')}</p>
+        </div>
+
+        <p className="text-xs text-muted text-center">{t('capture.formats')}</p>
+      </div>
+    </div>
+  )
+}
+
+function CameraMultiCapture({ files, onAddPage, onDone, onRemovePage, onCancel }) {
+  const { t } = useTranslation()
+  const previews = files.map((f) => URL.createObjectURL(f))
+  const maxReached = files.length >= 10
+
+  useEffect(() => {
+    return () => previews.forEach((url) => URL.revokeObjectURL(url))
+  }, [files]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="fixed inset-0 bg-background z-50 flex flex-col">
+      <header className="flex items-center justify-between px-4 h-14 border-b border-border bg-surface flex-shrink-0">
+        <h1 className="text-sm font-semibold text-[#1A1A18]">
+          {t('review.pages', { count: files.length })}
+        </h1>
+        <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-background transition-colors">
+          <X size={20} className="text-muted" />
+        </button>
+      </header>
+
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {previews.map((url, i) => (
+            <div key={i} className="relative aspect-[3/4]">
+              <img
+                src={url}
+                alt={`Page ${i + 1}`}
+                className="w-full h-full object-cover rounded-[8px] border border-border"
+              />
+              <div className="absolute top-1 left-1 bg-[#1A1A18]/70 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {i + 1}
+              </div>
+              <button
+                onClick={() => onRemovePage(i)}
+                className="absolute top-1 right-1 bg-error/80 text-white rounded-full w-5 h-5 flex items-center justify-center"
+              >
+                <X size={10} />
+              </button>
+            </div>
+          ))}
+        </div>
+        {maxReached && (
+          <p className="text-xs text-muted text-center mb-3">{t('capture.max_pages')}</p>
+        )}
+      </div>
+
+      <div className="px-4 space-y-2.5" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
+        {!maxReached && (
+          <button
+            onClick={onAddPage}
+            className="w-full flex items-center justify-center gap-2 border border-border bg-surface rounded-[10px] py-3.5 transition-transform active:scale-[0.98]"
+          >
+            <Plus size={16} className="text-primary" />
+            <span className="text-sm font-medium text-[#1A1A18]">{t('capture.add_page')}</span>
+          </button>
+        )}
+        <button
+          onClick={onDone}
+          className="w-full flex items-center justify-center gap-2 bg-primary text-white rounded-[10px] py-4 font-semibold text-sm shadow-sm transition-transform active:scale-[0.98]"
+        >
+          <Check size={16} />
+          {t('capture.done_pages')} — {t('review.pages', { count: files.length })}
+        </button>
       </div>
     </div>
   )

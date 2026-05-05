@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Upload, ClipboardList, BookOpen, FileSpreadsheet, Cloud, Users } from 'lucide-react'
+import { Upload, ClipboardList, BookOpen, FileSpreadsheet, Users } from 'lucide-react'
 import { useReceipts } from '../hooks/useReceipts'
 import { useShares } from '../hooks/useShares'
+import FlowDiagram from '../components/FlowDiagram'
 import { daysAgo } from '../lib/utils'
 
 export default function HomePage() {
@@ -56,25 +57,13 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* Drive value prop */}
-      <button
-        onClick={() => navigate('/settings')}
-        className="w-full flex items-start gap-3 bg-indigo-50 border border-indigo-100 rounded-[10px] px-4 py-3.5 text-left active:scale-[0.98] transition-transform"
-      >
-        <Cloud size={18} className="text-indigo-500 flex-shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-indigo-700 leading-snug">
-            {lang === 'fr'
-              ? 'Vos fichiers restent dans VOTRE Drive'
-              : 'Your files stay in YOUR Drive'}
-          </p>
-          <p className="text-xs text-indigo-500 mt-0.5 leading-snug">
-            {lang === 'fr'
-              ? 'Récu ne stocke que les métadonnées — fournisseur, montants, dates. Vos reçus vivent dans votre Google Drive, gratuit avec Gmail.'
-              : 'Récu stores only metadata — vendor, amounts, dates. Your receipt files live in your Google Drive, free with Gmail.'}
-          </p>
-        </div>
-      </button>
+      {/* Flow diagram */}
+      <div>
+        <p className="text-xs text-muted uppercase tracking-wide font-medium mb-3">
+          {lang === 'fr' ? 'Comment ça marche' : 'How it works'}
+        </p>
+        <FlowDiagram lang={lang} />
+      </div>
 
       {/* Pending badge */}
       {pendingCount > 0 && (

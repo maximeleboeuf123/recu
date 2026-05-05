@@ -35,7 +35,9 @@
     "upload_title": "Upload a receipt",
     "upload_hint": "Photo, PDF or image file · AI extraction",
     "choose_file": "Choose file",
-    "formats": "JPG, PNG, HEIC, PDF — up to 20 MB"
+    "formats": "JPG, PNG, HEIC, PDF — up to 20 MB",
+    "camera_multipage": "Multi-page camera capture",
+    "camera_multipage_hint": "Capture each page separately, then submit together"
   },
   "review": {
     "title": "Review Queue",

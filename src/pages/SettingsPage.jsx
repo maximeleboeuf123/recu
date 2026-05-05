@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Layers, RefreshCw, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync, Copy, Check, Share2 } from 'lucide-react'
+import { Layers, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync, Copy, Check, Share2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useDrive } from '../hooks/useDrive'
 import LanguageToggle from '../components/LanguageToggle'
@@ -95,7 +95,6 @@ export default function SettingsPage() {
           </span>
           <ChevronRight size={15} className="text-muted" />
         </Link>
-        <Row icon={RefreshCw} label={t('settings.recurring')} />
         <div className="flex items-center justify-between px-4 py-3.5">
           <span className="text-[#1A1A18] font-medium text-sm">{t('settings.language')}</span>
           <LanguageToggle session={session} />

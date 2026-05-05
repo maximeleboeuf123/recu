@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Upload, ClipboardList, BookOpen, Settings } from 'lucide-react'
+import { Home, Upload, ClipboardList, BookOpen, FileSpreadsheet, Settings } from 'lucide-react'
 
 export default function BottomNav({ pendingCount = 0 }) {
   const { t } = useTranslation()
@@ -11,6 +11,7 @@ export default function BottomNav({ pendingCount = 0 }) {
     { path: '/capture', iconKey: 'upload',  Icon: Upload },
     { path: '/review',  iconKey: 'review',  Icon: ClipboardList },
     { path: '/ledger',  iconKey: 'ledger',  Icon: BookOpen },
+    { path: '/export',  iconKey: 'export',  Icon: FileSpreadsheet },
     { path: '/settings',iconKey: 'settings',Icon: Settings },
   ]
 
