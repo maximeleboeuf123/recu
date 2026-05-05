@@ -241,21 +241,32 @@ async function _handler(req, res) {
     return res.status(200).end()
   }
 
-  // Drive upload — best-effort, only for real file attachments
+  // Drive upload — best-effort, only for real file attachments.
+  // Files land in _for_review/ (or _for_review/{accountName}/ if account is known).
   if (!isTextFallback && fileBase64) {
     try {
       const { data: userRow } = await serviceClient
-        .from('users').select('drive_folder_id, drive_inbox_id, drive_token_active').eq('id', userId).single()
+        .from('users').select('drive_review_folder_id, drive_inbox_id, drive_token_active').eq('id', userId).single()
 
-      const targetFolderId = userRow?.drive_inbox_id || userRow?.drive_folder_id
-      if (targetFolderId && userRow?.drive_token_active !== false) {
-        const driveToken = await getValidToken(userId, serviceClient)
-        if (driveToken) {
-          const driveResult = await uploadFileToDrive(
-            driveToken, filename + ext, mimeType, fileBase64, targetFolderId,
-          )
-          if (driveResult?.id) {
-            await serviceClient.from('receipts').update({ drive_file_id: driveResult.id }).eq('id', receipt.id)
+      if (userRow?.drive_token_active !== false) {
+        // Prefer _for_review/, fall back to _Receipts/ for users not yet migrated
+        const reviewRoot = userRow?.drive_review_folder_id || userRow?.drive_inbox_id
+        if (reviewRoot) {
+          const driveToken = await getValidToken(userId, serviceClient)
+          if (driveToken) {
+            // Upload to account sub-folder if account is known from pattern match
+            let targetFolderId = reviewRoot
+            if (patternMatch?.labels?.property) {
+              const { findOrCreateFolder } = await import('./lib/driveClient.js')
+              const accFolder = await findOrCreateFolder(driveToken, patternMatch.labels.property, reviewRoot)
+              targetFolderId = accFolder.id
+            }
+            const driveResult = await uploadFileToDrive(
+              driveToken, filename + ext, mimeType, fileBase64, targetFolderId,
+            )
+            if (driveResult?.id) {
+              await serviceClient.from('receipts').update({ drive_file_id: driveResult.id }).eq('id', receipt.id)
+            }
           }
         }
       }

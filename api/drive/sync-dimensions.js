@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
     const { data: userData } = await serviceClient
       .from('users')
-      .select('drive_inbox_id, drive_folder_id')
+      .select('drive_inbox_id, drive_folder_id, drive_review_folder_id, drive_to_process_id')
       .eq('id', user.userId)
       .single()
 
@@ -46,9 +46,12 @@ export default async function handler(req, res) {
     const currentYear = new Date().getFullYear()
     let created = 0
 
+    const reviewRootId = userData?.drive_review_folder_id
+    const toProcessRootId = userData?.drive_to_process_id
+
     for (const acc of accounts) {
       try {
-        // 1. Account folder
+        // 1. Account folder under _Receipts/
         const accFolder = await findOrCreateFolder(accessToken, acc.name, inboxId)
         if (acc.drive_folder_id !== accFolder.id) {
           await serviceClient
@@ -71,6 +74,16 @@ export default async function handler(req, res) {
         const accCats = categories.filter((c) => c.parent_id === acc.id)
         for (const cat of accCats) {
           await findOrCreateFolder(accessToken, cat.name, yearFolder.id)
+          created++
+        }
+
+        // 4. Mirror account folder under _for_review/ and _to_process/
+        if (reviewRootId) {
+          await findOrCreateFolder(accessToken, acc.name, reviewRootId)
+          created++
+        }
+        if (toProcessRootId) {
+          await findOrCreateFolder(accessToken, acc.name, toProcessRootId)
           created++
         }
       } catch (e) {

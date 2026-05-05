@@ -1,5 +1,6 @@
+import crypto from 'crypto'
 import { getServiceClient } from '../lib/auth.js'
-import { findOrCreateFolder } from '../lib/driveClient.js'
+import { findOrCreateFolder, watchDriveChanges } from '../lib/driveClient.js'
 
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token'
 const DRIVE_API = 'https://www.googleapis.com/drive/v3'
@@ -65,7 +66,7 @@ export default async function handler(req, res) {
   // Fetch existing folder IDs
   const { data: userData } = await serviceClient
     .from('users')
-    .select('drive_folder_id, drive_inbox_id, drive_exports_id, drive_to_process_id')
+    .select('drive_folder_id, drive_inbox_id, drive_exports_id, drive_to_process_id, drive_review_folder_id, drive_watch_channel_id, drive_watch_resource_id')
     .eq('id', userId)
     .single()
 
@@ -94,6 +95,7 @@ export default async function handler(req, res) {
       const inbox = await findOrCreateFolder(tokens.access_token, inboxName, root.id)
       const exportsFolder = await findOrCreateFolder(tokens.access_token, '_Exports', root.id)
       const toProcess = await findOrCreateFolder(tokens.access_token, '_to_process', root.id)
+      const reviewFolder = await findOrCreateFolder(tokens.access_token, '_for_review', root.id)
 
       rootId = root.id
       inboxId = inbox.id
@@ -103,15 +105,53 @@ export default async function handler(req, res) {
         drive_inbox_id: inbox.id,
         drive_exports_id: exportsFolder.id,
         drive_to_process_id: toProcess.id,
+        drive_review_folder_id: reviewFolder.id,
       }).eq('id', userId)
     } catch (e) {
       console.error('Folder setup failed:', e.message)
       return res.redirect(`${appOrigin}/settings?drive=error`)
     }
+  } else if (!userData?.drive_review_folder_id && rootId) {
+    // Existing user reconnecting — ensure _for_review exists
+    try {
+      const reviewFolder = await findOrCreateFolder(tokens.access_token, '_for_review', rootId)
+      await serviceClient.from('users').update({ drive_review_folder_id: reviewFolder.id }).eq('id', userId)
+    } catch (e) {
+      console.error('_for_review folder setup failed (non-fatal):', e.message)
+    }
   }
 
   // Mark token as active regardless of which branch ran above
   await serviceClient.from('users').update({ drive_token_active: true }).eq('id', userId)
+
+  // Register (or re-register) a Drive changes watch for the _to_process drop zone.
+  // Non-fatal: Drive connect succeeds even if watch registration fails.
+  try {
+    // Stop any existing watch channel before registering a new one
+    if (userData?.drive_watch_channel_id && userData?.drive_watch_resource_id) {
+      try {
+        const { stopDriveWatch } = await import('../lib/driveClient.js')
+        await stopDriveWatch(tokens.access_token, userData.drive_watch_channel_id, userData.drive_watch_resource_id)
+      } catch { /* ignore — old channel may already be expired */ }
+    }
+
+    const channelId = crypto.randomUUID()
+    const watchResult = await watchDriveChanges(
+      tokens.access_token,
+      channelId,
+      `${appOrigin}/api/drive/ingest`,
+      userId,
+    )
+    await serviceClient.from('users').update({
+      drive_watch_channel_id: channelId,
+      drive_watch_resource_id: watchResult.resourceId,
+      drive_watch_expires_at: watchResult.expiration
+        ? new Date(Number(watchResult.expiration)).toISOString()
+        : null,
+    }).eq('id', userId)
+  } catch (e) {
+    console.error('Drive watch registration failed (non-fatal):', e.message)
+  }
 
   // Always sync account-level folders with dimensions (idempotent, fast).
   // Full category/year sync is available via the sync-dimensions endpoint.

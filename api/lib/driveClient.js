@@ -154,3 +154,62 @@ export async function revokeAccessToken(accessToken) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   })
 }
+
+// List all items (files + folders) directly inside folderId, excluding trashed
+export async function listFolderContents(accessToken, folderId) {
+  const q = encodeURIComponent(`'${escapeDriveQuery(folderId)}' in parents and trashed=false`)
+  const res = await fetch(
+    `${DRIVE_API}/files?q=${q}&fields=files(id,name,mimeType,size)&orderBy=createdTime`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  )
+  if (!res.ok) throw new Error(`listFolderContents failed: ${res.status}`)
+  const data = await res.json()
+  return data.files || []
+}
+
+// Download file bytes and return as base64 + metadata
+export async function downloadFileContent(accessToken, fileId) {
+  const metaRes = await fetch(`${DRIVE_API}/files/${fileId}?fields=id,name,mimeType,size`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!metaRes.ok) throw new Error(`downloadFileContent metadata: ${metaRes.status}`)
+  const meta = await metaRes.json()
+
+  if (meta.mimeType?.startsWith('application/vnd.google-apps.')) {
+    throw new Error(`Google Workspace format not supported: ${meta.mimeType}`)
+  }
+
+  const contentRes = await fetch(`${DRIVE_API}/files/${fileId}?alt=media`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!contentRes.ok) throw new Error(`downloadFileContent content: ${contentRes.status}`)
+
+  const buffer = await contentRes.arrayBuffer()
+  return {
+    base64: Buffer.from(buffer).toString('base64'),
+    mimeType: meta.mimeType,
+    name: meta.name,
+    size: Number(meta.size || 0),
+  }
+}
+
+// Register a Drive changes watch channel. Returns { resourceId, expiration } from Google.
+export async function watchDriveChanges(accessToken, channelId, webhookUrl, token) {
+  const res = await fetch(`${DRIVE_API}/changes/watch`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind: 'api#channel', id: channelId, type: 'web_hook', address: webhookUrl, token }),
+  })
+  if (!res.ok) throw new Error(`watchDriveChanges failed: ${res.status} ${await res.text()}`)
+  return res.json()
+}
+
+// Stop a Drive watch channel
+export async function stopDriveWatch(accessToken, channelId, resourceId) {
+  const res = await fetch(`${DRIVE_API}/channels/stop`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind: 'api#channel', id: channelId, resourceId }),
+  })
+  if (!res.ok && res.status !== 404) throw new Error(`stopDriveWatch failed: ${res.status}`)
+}

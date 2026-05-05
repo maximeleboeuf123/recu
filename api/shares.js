@@ -1,7 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 import { getServiceClient } from './lib/auth.js'
 import { planAllows } from './lib/plans.js'
-import { getValidToken, findOrCreateFolder, grantFolderPermission, revokeFolderPermission } from './lib/driveClient.js'
+import {
+  getValidToken, findOrCreateFolder, grantFolderPermission, revokeFolderPermission,
+} from './lib/driveClient.js'
 
 function decodeJwt(token) {
   try {
@@ -25,39 +27,70 @@ function parseBody(req) {
   })
 }
 
-// Grant guest access to Récu/{accountName}/ in the owner's Drive.
-// Returns permissionId (store in account_shares for later revocation), or null if Drive not connected.
+// Grant guest access to account folders across all three Drive trees.
+// Returns { main, review, process } permissionIds (store in account_shares).
 async function grantAccountDrive(ownerId, accountName, guestEmail, permission, serviceClient) {
   try {
     const { data: userData } = await serviceClient
-      .from('users').select('drive_folder_id').eq('id', ownerId).single()
-    if (!userData?.drive_folder_id) return null
+      .from('users')
+      .select('drive_inbox_id, drive_review_folder_id, drive_to_process_id')
+      .eq('id', ownerId).single()
 
     const accessToken = await getValidToken(ownerId, serviceClient)
-    if (!accessToken) return null
+    if (!accessToken) return {}
 
-    const accountFolder = await findOrCreateFolder(accessToken, accountName, userData.drive_folder_id)
     const role = permission === 'edit' ? 'writer' : 'reader'
-    return await grantFolderPermission(accessToken, accountFolder.id, guestEmail, role)
+    const result = {}
+
+    const roots = [
+      { key: 'main',    id: userData?.drive_inbox_id },
+      { key: 'review',  id: userData?.drive_review_folder_id },
+      { key: 'process', id: userData?.drive_to_process_id },
+    ]
+
+    for (const { key, id } of roots) {
+      if (!id) continue
+      try {
+        const folder = await findOrCreateFolder(accessToken, accountName, id)
+        result[key] = await grantFolderPermission(accessToken, folder.id, guestEmail, role)
+      } catch (e) {
+        console.error(`Drive permission grant (${key}, non-critical):`, e?.message)
+      }
+    }
+    return result
   } catch (e) {
     console.error('Drive permission grant (non-critical):', e?.message)
-    return null
+    return {}
   }
 }
 
-// Revoke guest access from Récu/{accountName}/ using stored permissionId.
-async function revokeAccountDrive(ownerId, accountName, permissionId, serviceClient) {
-  if (!permissionId) return
+// Revoke guest access from all three folder trees.
+async function revokeAccountDrive(ownerId, accountName, permissionIds, serviceClient) {
+  if (!permissionIds || Object.keys(permissionIds).length === 0) return
   try {
     const { data: userData } = await serviceClient
-      .from('users').select('drive_folder_id').eq('id', ownerId).single()
-    if (!userData?.drive_folder_id) return
+      .from('users')
+      .select('drive_inbox_id, drive_review_folder_id, drive_to_process_id')
+      .eq('id', ownerId).single()
 
     const accessToken = await getValidToken(ownerId, serviceClient)
     if (!accessToken) return
 
-    const accountFolder = await findOrCreateFolder(accessToken, accountName, userData.drive_folder_id)
-    await revokeFolderPermission(accessToken, accountFolder.id, permissionId)
+    const roots = [
+      { key: 'main',    id: userData?.drive_inbox_id,          permId: permissionIds.main },
+      { key: 'review',  id: userData?.drive_review_folder_id,  permId: permissionIds.review },
+      { key: 'process', id: userData?.drive_to_process_id,     permId: permissionIds.process },
+    ]
+
+    for (const { key, id, permId } of roots) {
+      if (!id || !permId) continue
+      try {
+        const folder = await findOrCreateFolder(accessToken, accountName, id)
+        await revokeFolderPermission(accessToken, folder.id, permId)
+      } catch (e) {
+        console.error(`Drive permission revoke (${key}, non-critical):`, e?.message)
+      }
+    }
   } catch (e) {
     console.error('Drive permission revoke (non-critical):', e?.message)
   }
@@ -88,7 +121,7 @@ export default async function handler(req, res) {
         .is('shared_with_id', null)
 
       for (const share of pending || []) {
-        const permissionId = await grantAccountDrive(
+        const perms = await grantAccountDrive(
           share.owner_id, share.account_name, share.shared_with_email, share.permission, serviceClient
         )
         await serviceClient
@@ -96,7 +129,9 @@ export default async function handler(req, res) {
           .update({
             shared_with_id: userId,
             status: 'accepted',
-            ...(permissionId ? { drive_permission_id: permissionId } : {}),
+            ...(perms.main    ? { drive_permission_id: perms.main }           : {}),
+            ...(perms.review  ? { drive_review_permission_id: perms.review }  : {}),
+            ...(perms.process ? { drive_process_permission_id: perms.process } : {}),
           })
           .eq('id', share.id)
       }
@@ -153,15 +188,17 @@ export default async function handler(req, res) {
 
     // Grant Drive folder access immediately if share is accepted
     if (isAccepted) {
-      const permissionId = await grantAccountDrive(
+      const perms = await grantAccountDrive(
         userId, account_name.trim(), shared_with_email.toLowerCase(), permission, serviceClient
       )
-      if (permissionId) {
-        await serviceClient
-          .from('account_shares')
-          .update({ drive_permission_id: permissionId })
-          .eq('id', share.id)
-        share.drive_permission_id = permissionId
+      if (Object.keys(perms).length) {
+        const updates = {
+          ...(perms.main    ? { drive_permission_id: perms.main }           : {}),
+          ...(perms.review  ? { drive_review_permission_id: perms.review }  : {}),
+          ...(perms.process ? { drive_process_permission_id: perms.process } : {}),
+        }
+        await serviceClient.from('account_shares').update(updates).eq('id', share.id)
+        Object.assign(share, updates)
       }
     }
 
@@ -176,15 +213,17 @@ export default async function handler(req, res) {
     // Fetch the share to get Drive details before deleting
     const { data: existing } = await serviceClient
       .from('account_shares')
-      .select('owner_id, account_name, drive_permission_id')
+      .select('owner_id, account_name, drive_permission_id, drive_review_permission_id, drive_process_permission_id')
       .eq('id', id)
       .eq('owner_id', userId)
       .single()
 
-    if (existing?.drive_permission_id) {
-      await revokeAccountDrive(
-        existing.owner_id, existing.account_name, existing.drive_permission_id, serviceClient
-      )
+    if (existing) {
+      await revokeAccountDrive(existing.owner_id, existing.account_name, {
+        main:    existing.drive_permission_id,
+        review:  existing.drive_review_permission_id,
+        process: existing.drive_process_permission_id,
+      }, serviceClient)
     }
 
     const { error } = await anonClient

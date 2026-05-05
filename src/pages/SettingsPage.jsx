@@ -246,8 +246,8 @@ function DriveSection({ session, driveState, loading, onRefresh, showToast }) {
         </button>
         <p className="text-xs text-muted leading-relaxed">
           {lang === 'en'
-            ? 'Récu only accesses files it creates. It cannot see, read, or modify any other file in your Google Drive.'
-            : 'Récu accède uniquement aux fichiers qu\'il crée. Il ne peut pas voir, lire ni modifier les autres fichiers de votre Google Drive.'}
+            ? 'Récu only accesses files within your Récu folder. It cannot see, read, or modify any other file in your Google Drive.'
+            : 'Récu accède uniquement aux fichiers de votre dossier Récu. Il ne peut pas voir, lire ni modifier les autres fichiers de votre Google Drive.'}
         </p>
       </div>
     )
@@ -275,8 +275,8 @@ function DriveSection({ session, driveState, loading, onRefresh, showToast }) {
 
       <p className="text-xs text-muted pl-8 leading-relaxed">
         {lang === 'en'
-          ? 'Récu only accesses files it creates. It cannot see, read, or modify any other file in your Google Drive.'
-          : 'Récu accède uniquement aux fichiers qu\'il crée. Il ne peut pas voir, lire ni modifier les autres fichiers de votre Google Drive.'}</p>
+          ? 'Récu only accesses files within your Récu folder. It cannot see, read, or modify any other file in your Google Drive.'
+          : 'Récu accède uniquement aux fichiers de votre dossier Récu. Il ne peut pas voir, lire ni modifier les autres fichiers de votre Google Drive.'}</p>
 
       <div className="flex gap-2">
         <a

@@ -118,8 +118,8 @@ export default function LandingPage() {
             </p>
             <p className="text-xs text-indigo-500 mt-0.5 leading-snug">
               {lang === 'fr'
-                ? "Récu ne stocke que les métadonnées — fournisseur, montants, dates. Vos reçus vivent dans votre Google Drive, inclus gratuit avec Gmail."
-                : 'Récu stores only metadata — vendor, amounts, dates. Your receipts live in your Google Drive, free with Gmail.'}
+                ? "Récu ne stocke que les métadonnées — fournisseur, montants, dates. Vos reçus vivent dans votre dossier Récu sur Google Drive."
+                : 'Récu stores only metadata — vendor, amounts, dates. Your receipts live in your Récu folder on Google Drive, free with Gmail.'}
             </p>
           </div>
         </div>
