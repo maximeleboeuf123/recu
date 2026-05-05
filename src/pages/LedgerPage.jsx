@@ -48,6 +48,33 @@ export default function LedgerPage() {
     setField('dateTo', lastStr)
   }
 
+  const setLast7Days = () => {
+    const now = new Date()
+    const from = new Date(now); from.setDate(from.getDate() - 6)
+    setField('dateFrom', from.toISOString().slice(0, 10))
+    setField('dateTo', now.toISOString().slice(0, 10))
+  }
+
+  const setThisYear = () => {
+    const y = new Date().getFullYear()
+    setField('dateFrom', `${y}-01-01`)
+    setField('dateTo', `${y}-12-31`)
+  }
+
+  const activePeriod = useMemo(() => {
+    if (!filters.dateFrom || !filters.dateTo) return null
+    const now = new Date()
+    const from7 = new Date(now); from7.setDate(from7.getDate() - 6)
+    if (filters.dateFrom === from7.toISOString().slice(0, 10) && filters.dateTo === now.toISOString().slice(0, 10)) return '7d'
+    const m = now.getMonth() + 1
+    const y = now.getFullYear()
+    const firstMonth = `${y}-${String(m).padStart(2, '0')}-01`
+    const lastMonth = new Date(y, m, 0).toISOString().slice(0, 10)
+    if (filters.dateFrom === firstMonth && filters.dateTo === lastMonth) return 'month'
+    if (filters.dateFrom === `${y}-01-01` && filters.dateTo === `${y}-12-31`) return 'year'
+    return null
+  }, [filters.dateFrom, filters.dateTo])
+
   const filtered = useMemo(() => {
     let list = receipts.filter((r) => r.status !== 'deleted')
 
@@ -198,13 +225,14 @@ export default function LedgerPage() {
         </button>
       </div>
 
-      {/* Status pills */}
-      <div className="flex gap-2 mb-3">
+      {/* Quick-filter strip — always visible, horizontally scrollable */}
+      <div className="flex gap-2 overflow-x-auto pb-1 mb-3 -mx-4 px-4 scrollbar-hide">
+        {/* Status */}
         {(['all', 'pending', 'confirmed']).map((s) => (
           <button
             key={s}
             onClick={() => setField('status', s)}
-            className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
               filters.status === s
                 ? 'bg-primary text-white border-primary'
                 : 'bg-surface border-border text-muted hover:border-primary hover:text-primary'
@@ -213,10 +241,65 @@ export default function LedgerPage() {
             {s === 'all' ? t('ledger.all') : s === 'pending' ? t('ledger.pending') : t('ledger.confirmed')}
           </button>
         ))}
+
+        <div className="w-px flex-shrink-0 bg-border/60 mx-0.5" />
+
+        {/* Date periods */}
+        {[
+          { key: '7d',    label: lang === 'en' ? '7 days' : '7 jours',      fn: setLast7Days },
+          { key: 'month', label: lang === 'en' ? 'This month' : 'Ce mois',  fn: setThisMonth },
+          { key: 'year',  label: lang === 'en' ? 'This year' : 'Cette année', fn: setThisYear },
+        ].map(({ key, label, fn }) => (
+          <button
+            key={key}
+            onClick={() => activePeriod === key ? (setField('dateFrom', ''), setField('dateTo', '')) : fn()}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+              activePeriod === key
+                ? 'bg-primary text-white border-primary'
+                : 'bg-surface border-border text-muted hover:border-primary hover:text-primary'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+
+        <div className="w-px flex-shrink-0 bg-border/60 mx-0.5" />
+
+        {/* Account */}
+        <select
+          value={filters.account}
+          onChange={(e) => { setField('account', e.target.value); setField('category', '') }}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors appearance-none cursor-pointer ${
+            filters.account ? 'bg-primary text-white border-primary' : 'bg-surface border-border text-muted'
+          }`}
+        >
+          <option value="">{lang === 'en' ? 'Account' : 'Compte'}</option>
+          {accountsWithCategories.map((a) => (
+            <option key={a.id} value={a.name}>{a.name}</option>
+          ))}
+          {sharedAccounts.map(name => (
+            <option key={`s-${name}`} value={name}>{name}</option>
+          ))}
+        </select>
+
+        {/* Category */}
+        <select
+          value={filters.category}
+          onChange={(e) => setField('category', e.target.value)}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors appearance-none cursor-pointer ${
+            filters.category ? 'bg-primary text-white border-primary' : 'bg-surface border-border text-muted'
+          }`}
+        >
+          <option value="">{lang === 'en' ? 'Category' : 'Catégorie'}</option>
+          {categoryOptions.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
         {activeCount > 0 && (
           <button
             onClick={resetFilters}
-            className="ml-auto px-3 py-1 rounded-full text-sm border border-error/40 text-error hover:bg-error/10 transition-colors flex items-center gap-1"
+            className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border border-error/40 text-error hover:bg-error/10 transition-colors flex items-center gap-1"
           >
             <X size={11} />
             {lang === 'en' ? 'Clear' : 'Effacer'}
