@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import { getServiceClient } from './lib/auth.js'
-import { getValidToken, uploadFileToDrive } from './lib/driveClient.js'
+import { getValidToken, uploadFileToDrive, findOrCreateFolder } from './lib/driveClient.js'
 import {
   EXTRACT_PROMPT,
   validateExtracted,
@@ -212,18 +212,22 @@ async function _handler(req, res) {
     const serviceClient = getServiceClient()
     const { data: userData } = await serviceClient
       .from('users')
-      .select('drive_inbox_id')
+      .select('drive_folder_id')
       .eq('id', userId)
       .single()
 
-    if (userData?.drive_inbox_id) {
+    if (userData?.drive_folder_id) {
       const accessToken = await getValidToken(userId, serviceClient)
       if (accessToken) {
+        // Route to {account}/_for_review/ (or _unassigned/_for_review/ if no pattern match)
+        const accountName = patternMatch?.labels?.property || '_unassigned'
+        const accFolder = await findOrCreateFolder(accessToken, accountName, userData.drive_folder_id)
+        const reviewFolder = await findOrCreateFolder(accessToken, '_for_review', accFolder.id)
+
         const firstPage = pages[0]
         const ext = firstPage.mimeType === 'application/pdf' ? '.pdf' : '.jpg'
-        const driveFilename = `${filename} - for_review${ext}`
         const uploaded = await uploadFileToDrive(
-          accessToken, driveFilename, firstPage.mimeType, firstPage.fileBase64, userData.drive_inbox_id
+          accessToken, `${filename}${ext}`, firstPage.mimeType, firstPage.fileBase64, reviewFolder.id
         )
         driveUrl = uploaded.webViewLink
         driveFileId = uploaded.id
@@ -233,7 +237,7 @@ async function _handler(req, res) {
           const p = pages[i]
           const pageExt = p.mimeType === 'application/pdf' ? '.pdf' : '.jpg'
           await uploadFileToDrive(
-            accessToken, `${filename} - p${i + 1}${pageExt}`, p.mimeType, p.fileBase64, userData.drive_inbox_id
+            accessToken, `${filename} - p${i + 1}${pageExt}`, p.mimeType, p.fileBase64, reviewFolder.id
           )
         }
 
