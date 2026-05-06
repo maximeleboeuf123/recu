@@ -87,6 +87,21 @@ export default function CapturePage() {
       let driveFileId = null
       let driveUrl = null
 
+      const isRec = createMode === 'recurring'
+      const dates = isRec
+        ? generateDates(schedule.start_date, schedule.end_date, schedule.unit, schedule.interval).slice(0, 120)
+        : [receiptData.invoice_date || today()]
+
+      // For recurring, name the Drive file with the full date range so there's one shared file
+      let uploadFilename = photoFile?.name || null
+      if (isRec && photoFile && dates.length > 0) {
+        const n = photoFile.name
+        const dot = n.lastIndexOf('.')
+        const base = dot >= 0 ? n.slice(0, dot) : n
+        const ext = dot >= 0 ? n.slice(dot) : ''
+        uploadFilename = `${base}_${dates[0]}_to_${dates[dates.length - 1]}${ext}`
+      }
+
       if (photoFile && driveState) {
         try {
           const base64 = await new Promise((resolve, reject) => {
@@ -102,7 +117,7 @@ export default function CapturePage() {
           const uploadRes = await fetch('/api/drive/upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-            body: JSON.stringify({ fileBase64: base64, mimeType: photoFile.type, filename: photoFile.name }),
+            body: JSON.stringify({ fileBase64: base64, mimeType: photoFile.type, filename: uploadFilename }),
           })
           if (uploadRes.ok) {
             const d = await uploadRes.json()
@@ -114,38 +129,47 @@ export default function CapturePage() {
         }
       }
 
-      const isRec = createMode === 'recurring'
-      const dates = isRec
-        ? generateDates(schedule.start_date, schedule.end_date, schedule.unit, schedule.interval).slice(0, 120)
-        : [receiptData.invoice_date || today()]
-
-      const rows = dates.map((date, i) => ({
-        user_id: session.user.id,
-        status: 'confirmed',
-        vendor: receiptData.vendor || null,
-        invoice_date: date,
-        invoice_number: receiptData.invoice_number
-          ? (isRec && i > 0 ? `${receiptData.invoice_number}-${i + 1}` : receiptData.invoice_number)
-          : null,
-        description: receiptData.description || null,
-        subtotal: receiptData.subtotal || null,
-        gst: receiptData.gst || null,
-        qst: receiptData.qst || null,
-        hst: receiptData.hst || null,
-        total: receiptData.total || null,
-        currency: receiptData.currency || 'CAD',
-        payment_method: receiptData.payment_method || null,
-        vendor_gst_number: receiptData.vendor_gst_number || null,
-        vendor_qst_number: receiptData.vendor_qst_number || null,
-        drive_file_id: i === 0 ? (driveFileId || null) : null,
-        drive_url: i === 0 ? (driveUrl || null) : null,
-        filename: i === 0 ? (photoFile?.name || null) : null,
-        labels: receiptData.labels || {},
-        source: 'manual',
-        confidence_scores: {},
-        extracted_raw: {},
-        edit_history: [],
-      }))
+      const rows = dates.map((date, i) => {
+        // Per-receipt filename includes the date so each entry is identifiable
+        let filename = null
+        if (isRec && photoFile?.name) {
+          const n = photoFile.name
+          const dot = n.lastIndexOf('.')
+          const base = dot >= 0 ? n.slice(0, dot) : n
+          const ext = dot >= 0 ? n.slice(dot) : ''
+          filename = `${base}_${date}${ext}`
+        } else if (!isRec && i === 0) {
+          filename = photoFile?.name || null
+        }
+        return {
+          user_id: session.user.id,
+          status: 'confirmed',
+          vendor: receiptData.vendor || null,
+          invoice_date: date,
+          invoice_number: receiptData.invoice_number
+            ? (isRec && i > 0 ? `${receiptData.invoice_number}-${i + 1}` : receiptData.invoice_number)
+            : null,
+          description: receiptData.description || null,
+          subtotal: receiptData.subtotal || null,
+          gst: receiptData.gst || null,
+          qst: receiptData.qst || null,
+          hst: receiptData.hst || null,
+          total: receiptData.total || null,
+          currency: receiptData.currency || 'CAD',
+          payment_method: receiptData.payment_method || null,
+          vendor_gst_number: receiptData.vendor_gst_number || null,
+          vendor_qst_number: receiptData.vendor_qst_number || null,
+          // All recurring receipts share the same Drive file (uploaded once with date-range name)
+          drive_file_id: isRec ? (driveFileId || null) : (i === 0 ? (driveFileId || null) : null),
+          drive_url: isRec ? (driveUrl || null) : (i === 0 ? (driveUrl || null) : null),
+          filename,
+          labels: receiptData.labels || {},
+          source: 'manual',
+          confidence_scores: {},
+          extracted_raw: {},
+          edit_history: [],
+        }
+      })
 
       const { data: inserted, error } = await supabase.from('receipts').insert(rows).select('id, drive_file_id')
       if (error) {
@@ -153,13 +177,14 @@ export default function CapturePage() {
         return false
       }
 
-      if (inserted) {
+      // For recurring, don't call organizeFile — one shared Drive file can't be moved N times
+      if (inserted && !isRec) {
         for (const r of inserted) {
           if (r.drive_file_id) organizeFile(r.id)
         }
       }
 
-      // Copy Drive file from template receipt when no new photo was attached
+      // Copy Drive file from template receipt when no new photo was attached (non-recurring only)
       if (templateReceipt?.drive_file_id && !photoFile && inserted?.length > 0 && !isRec && driveState) {
         try {
           const copyRes = await fetch('/api/drive/copy-file', {

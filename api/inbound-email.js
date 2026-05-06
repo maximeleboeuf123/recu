@@ -56,6 +56,28 @@ function pickBestAttachment(attachments) {
   return pool.sort((a, b) => (b.ContentLength || 0) - (a.ContentLength || 0))[0]
 }
 
+function buildEml({ from, subject, messageId, textBody, htmlBody }) {
+  const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2)}`
+  const lines = [
+    `From: ${from || ''}`,
+    `Subject: ${subject || '(no subject)'}`,
+    `Date: ${new Date().toUTCString()}`,
+    messageId ? `Message-ID: ${messageId}` : null,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+  ].filter(l => l !== null)
+
+  if (textBody) {
+    lines.push(`--${boundary}`, 'Content-Type: text/plain; charset=utf-8', '', textBody, '')
+  }
+  if (htmlBody) {
+    lines.push(`--${boundary}`, 'Content-Type: text/html; charset=utf-8', '', htmlBody, '')
+  }
+  lines.push(`--${boundary}--`)
+  return lines.join('\r\n')
+}
+
 async function sendReply(to, subject, receipt) {
   const lines = [
     'Your receipt has been captured and is pending review in Récu.',
@@ -156,6 +178,15 @@ async function _handler(req, res) {
     mimeType = best.ContentType
   }
 
+  // For text-only emails, upload an EML to Drive instead of plain text
+  let driveFileBase64 = fileBase64
+  let driveMimeType = mimeType
+  if (isTextFallback) {
+    const eml = buildEml({ from: From, subject: Subject, messageId: MessageID, textBody: TextBody, htmlBody: HtmlBody })
+    driveFileBase64 = Buffer.from(eml).toString('base64')
+    driveMimeType = 'message/rfc822'
+  }
+
   // Extract with Claude
   const anthropic = new Anthropic()
   let claudeContent
@@ -205,10 +236,10 @@ async function _handler(req, res) {
   const patternMatch = findPatternMatch(patterns, extracted.vendor)
 
   const filename = generateFilename(extracted, Subject)
-  const ext = mimeType === 'application/pdf' ? '.pdf'
+  const ext = driveMimeType === 'message/rfc822' ? '.eml'
+    : mimeType === 'application/pdf' ? '.pdf'
     : mimeType.startsWith('image/') ? '.jpg'
-    : mimeType === 'text/plain' ? '.txt'
-    : ''
+    : '.txt'
 
   const receiptRow = {
     user_id: userId,
@@ -257,7 +288,7 @@ async function _handler(req, res) {
           const accountName = patternMatch?.labels?.property || '_unassigned'
           const accFolder = await findOrCreateFolder(driveToken, accountName, userRow.drive_folder_id)
           const reviewFolder = await findOrCreateFolder(driveToken, '_for_review', accFolder.id)
-          const driveResult = await uploadFileToDrive(driveToken, filename + ext, mimeType, fileBase64, reviewFolder.id)
+          const driveResult = await uploadFileToDrive(driveToken, filename + ext, driveMimeType, driveFileBase64, reviewFolder.id)
           if (driveResult?.id) {
             await serviceClient.from('receipts').update({ drive_file_id: driveResult.id }).eq('id', receipt.id)
           }

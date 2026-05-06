@@ -50,11 +50,11 @@ async function _handler(req, res) {
 
   const { data: userData, error: userErr } = await serviceClient
     .from('users')
-    .select('drive_inbox_id, drive_folder_id')
+    .select('drive_folder_id')
     .eq('id', userId)
     .single()
 
-  const folderId = userData?.drive_inbox_id || userData?.drive_folder_id
+  const folderId = userData?.drive_folder_id
   if (userErr || !folderId) {
     return res.status(400).json({ error: 'Drive not connected' })
   }
