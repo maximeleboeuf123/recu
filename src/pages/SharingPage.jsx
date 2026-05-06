@@ -157,7 +157,9 @@ export default function SharingPage() {
                     <p className="text-sm text-[#1A1A18] truncate">{s.shared_with_email}</p>
                     <p className="text-xs text-muted">
                       {s.status === 'pending'
-                        ? (lang === 'fr' ? 'En attente d\'inscription' : 'Pending — user not signed up yet')
+                        ? s.shared_with_id
+                          ? (lang === 'fr' ? 'Invitation envoyée — pas encore acceptée' : 'Invited — not accepted yet')
+                          : (lang === 'fr' ? 'En attente — compte Récu non créé' : 'Pending — no Récu account yet')
                         : s.permission === 'edit'
                           ? (lang === 'fr' ? 'Peut modifier' : 'Can edit')
                           : (lang === 'fr' ? 'Lecture seule' : 'View only')}
