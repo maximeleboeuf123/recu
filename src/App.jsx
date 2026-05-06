@@ -21,6 +21,7 @@ import TermsPage from './pages/TermsPage'
 import CapturePage from './pages/CapturePage'
 import SharingPage from './pages/SharingPage'
 import SharedAccountPage from './pages/SharedAccountPage'
+import AdminPage from './pages/AdminPage'
 
 export default function App() {
   const { session, loading } = useAuth()
@@ -61,6 +62,7 @@ export default function App() {
               <Route path="/guide" element={<GuidePage />} />
               <Route path="/sharing" element={<SharingPage />} />
               <Route path="/shared/:shareId" element={<SharedAccountPage />} />
+              <Route path="/admin" element={<AdminPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           )}

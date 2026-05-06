@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Layers, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync, Copy, Check, Share2, Trash2 } from 'lucide-react'
+import { Layers, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync, Copy, Check, Share2, Trash2, MessageSquare, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useDrive } from '../hooks/useDrive'
 import { useShares } from '../hooks/useShares'
 import LanguageToggle from '../components/LanguageToggle'
+import FeedbackModal from '../components/FeedbackModal'
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation()
@@ -19,6 +20,8 @@ export default function SettingsPage() {
   const [copied, setCopied] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const isAdmin = email === 'admin@monrecu.app'
 
   const user = session?.user
   const email = user?.email ?? ''
@@ -112,6 +115,23 @@ export default function SettingsPage() {
           <span className="text-[#1A1A18] font-medium text-sm">{t('settings.language')}</span>
           <LanguageToggle session={session} />
         </div>
+        <button
+          onClick={() => setShowFeedback(true)}
+          className="flex items-center w-full px-4 py-3.5 gap-3 hover:bg-background transition-colors"
+        >
+          <MessageSquare size={17} className="text-muted flex-shrink-0" />
+          <span className="flex-1 text-left text-sm font-medium text-[#1A1A18]">
+            {lang === 'en' ? 'Send feedback' : 'Envoyer un commentaire'}
+          </span>
+          <ChevronRight size={15} className="text-muted" />
+        </button>
+        {isAdmin && (
+          <Link to="/admin" className="flex items-center px-4 py-3.5 gap-3 hover:bg-background transition-colors">
+            <ShieldCheck size={17} className="text-primary flex-shrink-0" />
+            <span className="flex-1 text-sm font-medium text-primary">Admin</span>
+            <ChevronRight size={15} className="text-primary" />
+          </Link>
+        )}
       </div>
 
       {/* Email inbox */}
@@ -223,6 +243,8 @@ export default function SettingsPage() {
         <span>·</span>
         <Link to="/terms" className="hover:text-primary transition-colors">{t('terms.title')}</Link>
       </div>
+
+      {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
 
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-[#1A1A18] text-white px-5 py-2.5 rounded-full text-sm z-50 shadow-lg pointer-events-none">
