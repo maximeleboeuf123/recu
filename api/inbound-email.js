@@ -56,26 +56,32 @@ function pickBestAttachment(attachments) {
   return pool.sort((a, b) => (b.ContentLength || 0) - (a.ContentLength || 0))[0]
 }
 
-function buildEml({ from, subject, messageId, textBody, htmlBody }) {
-  const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2)}`
-  const lines = [
-    `From: ${from || ''}`,
-    `Subject: ${subject || '(no subject)'}`,
-    `Date: ${new Date().toUTCString()}`,
-    messageId ? `Message-ID: ${messageId}` : null,
-    'MIME-Version: 1.0',
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    '',
-  ].filter(l => l !== null)
-
-  if (textBody) {
-    lines.push(`--${boundary}`, 'Content-Type: text/plain; charset=utf-8', '', textBody, '')
-  }
+function buildEmailHtml({ from, subject, textBody, htmlBody }) {
   if (htmlBody) {
-    lines.push(`--${boundary}`, 'Content-Type: text/html; charset=utf-8', '', htmlBody, '')
+    // Inject a small header bar above the original HTML so context is clear
+    const header = `<div style="font-family:sans-serif;font-size:12px;color:#666;background:#f5f5f5;border-bottom:1px solid #ddd;padding:10px 16px;margin-bottom:0">
+      <strong>From:</strong> ${from || ''} &nbsp;|&nbsp; <strong>Subject:</strong> ${subject || '(no subject)'}
+    </div>`
+    // Insert header before <body> if present, otherwise prepend
+    if (/<body/i.test(htmlBody)) {
+      return htmlBody.replace(/(<body[^>]*>)/i, `$1${header}`)
+    }
+    return header + htmlBody
   }
-  lines.push(`--${boundary}--`)
-  return lines.join('\r\n')
+  // Plain text fallback — wrap in minimal HTML for readability
+  const escaped = (textBody || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    body{font-family:sans-serif;font-size:14px;color:#333;max-width:680px;margin:32px auto;padding:0 16px}
+    .header{font-size:12px;color:#666;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px 14px;margin-bottom:20px}
+  </style></head><body>
+    <div class="header">
+      <strong>From:</strong> ${from || ''}<br>
+      <strong>Subject:</strong> ${subject || '(no subject)'}
+    </div>
+    <div>${escaped}</div>
+  </body></html>`
 }
 
 async function sendReply(to, subject, receipt) {
@@ -192,13 +198,13 @@ async function _handler(req, res) {
     mimeType = best.ContentType
   }
 
-  // For text-only emails, upload an EML to Drive instead of plain text
+  // For text-only emails, upload an HTML file to Drive instead of plain text
   let driveFileBase64 = fileBase64
   let driveMimeType = mimeType
   if (isTextFallback) {
-    const eml = buildEml({ from: From, subject: Subject, messageId: MessageID, textBody: TextBody, htmlBody: HtmlBody })
-    driveFileBase64 = Buffer.from(eml).toString('base64')
-    driveMimeType = 'message/rfc822'
+    const html = buildEmailHtml({ from: From, subject: Subject, textBody: TextBody, htmlBody: HtmlBody })
+    driveFileBase64 = Buffer.from(html).toString('base64')
+    driveMimeType = 'text/html'
   }
 
   // Extract with Claude
@@ -250,7 +256,7 @@ async function _handler(req, res) {
   const patternMatch = findPatternMatch(patterns, extracted.vendor)
 
   const filename = generateFilename(extracted, Subject)
-  const ext = driveMimeType === 'message/rfc822' ? '.eml'
+  const ext = driveMimeType === 'text/html' ? '.html'
     : mimeType === 'application/pdf' ? '.pdf'
     : mimeType.startsWith('image/') ? '.jpg'
     : '.txt'
