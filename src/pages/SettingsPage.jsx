@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Layers, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync, Copy, Check, Share2 } from 'lucide-react'
+import { Layers, Mail, HardDrive, LogOut, ExternalLink, Unlink, CheckCircle, ChevronRight, BookOpen, FolderSync, Copy, Check, Share2, Trash2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useDrive } from '../hooks/useDrive'
 import { useShares } from '../hooks/useShares'
@@ -17,6 +17,8 @@ export default function SettingsPage() {
   const [toast, setToast] = useState(null)
   const [inboxEmail, setInboxEmail] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const user = session?.user
   const email = user?.email ?? ''
@@ -153,6 +155,64 @@ export default function SettingsPage() {
         <LogOut size={16} />
         {t('auth.signout')}
       </button>
+
+      {/* Delete account */}
+      {!deleteConfirm ? (
+        <button
+          onClick={() => setDeleteConfirm(true)}
+          className="w-full flex items-center justify-center gap-2 text-muted text-xs py-2 hover:text-error transition-colors"
+        >
+          <Trash2 size={13} />
+          {lang === 'en' ? 'Delete account' : 'Supprimer le compte'}
+        </button>
+      ) : (
+        <div className="bg-error/5 border border-error/20 rounded-[8px] p-4 space-y-3">
+          <p className="text-sm text-error font-medium text-center">
+            {lang === 'en' ? 'Delete your account?' : 'Supprimer votre compte ?'}
+          </p>
+          <p className="text-xs text-muted text-center leading-relaxed">
+            {lang === 'en'
+              ? 'All receipt data will be permanently deleted. Your Google Drive files are not affected.'
+              : 'Toutes vos données seront supprimées définitivement. Vos fichiers Google Drive ne sont pas affectés.'}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setDeleteConfirm(false)}
+              className="flex-1 py-2 text-sm border border-border rounded-[8px] text-muted hover:bg-background transition-colors"
+            >
+              {lang === 'en' ? 'Cancel' : 'Annuler'}
+            </button>
+            <button
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true)
+                try {
+                  const res = await fetch('/api/delete-account', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${session.access_token}` },
+                  })
+                  if (res.ok) {
+                    signOut()
+                  } else {
+                    showToast(t('common.error'))
+                    setDeleteConfirm(false)
+                  }
+                } catch {
+                  showToast(t('common.error'))
+                  setDeleteConfirm(false)
+                } finally {
+                  setDeleting(false)
+                }
+              }}
+              className="flex-1 py-2 text-sm bg-error text-white rounded-[8px] font-medium hover:bg-error/90 transition-colors disabled:opacity-60"
+            >
+              {deleting
+                ? (lang === 'en' ? 'Deleting…' : 'Suppression…')
+                : (lang === 'en' ? 'Delete permanently' : 'Supprimer définitivement')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Legal */}
       <div className="flex items-center justify-center gap-4 text-xs text-muted pt-2 pb-4">
