@@ -51,9 +51,12 @@ export async function createDriveFolder(accessToken, name, parentId) {
   return res.json()
 }
 
-export async function uploadFileToDrive(accessToken, filename, mimeType, base64Data, folderId) {
+// convertMimeType: if set, Drive converts the uploaded content to that type (e.g. Google Doc from HTML)
+export async function uploadFileToDrive(accessToken, filename, mimeType, base64Data, folderId, convertMimeType) {
   const fileData = Buffer.from(base64Data, 'base64')
-  const metadata = JSON.stringify({ name: filename, parents: [folderId] })
+  const metaObj = { name: filename, parents: [folderId] }
+  if (convertMimeType) metaObj.mimeType = convertMimeType
+  const metadata = JSON.stringify(metaObj)
   const boundary = `recu_${Date.now()}`
   const body = Buffer.concat([
     Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`),

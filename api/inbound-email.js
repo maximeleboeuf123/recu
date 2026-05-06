@@ -198,13 +198,15 @@ async function _handler(req, res) {
     mimeType = best.ContentType
   }
 
-  // For text-only emails, upload an HTML file to Drive instead of plain text
+  // For text-only emails, convert to a Google Doc so it renders properly in Drive
   let driveFileBase64 = fileBase64
   let driveMimeType = mimeType
+  let driveConvertMimeType
   if (isTextFallback) {
     const html = buildEmailHtml({ from: From, subject: Subject, textBody: TextBody, htmlBody: HtmlBody })
     driveFileBase64 = Buffer.from(html).toString('base64')
     driveMimeType = 'text/html'
+    driveConvertMimeType = 'application/vnd.google-apps.document'
   }
 
   // Extract with Claude
@@ -256,7 +258,7 @@ async function _handler(req, res) {
   const patternMatch = findPatternMatch(patterns, extracted.vendor)
 
   const filename = generateFilename(extracted, Subject)
-  const ext = driveMimeType === 'text/html' ? '.html'
+  const ext = driveConvertMimeType === 'application/vnd.google-apps.document' ? ''
     : mimeType === 'application/pdf' ? '.pdf'
     : mimeType.startsWith('image/') ? '.jpg'
     : '.txt'
@@ -308,7 +310,7 @@ async function _handler(req, res) {
           const accountName = patternMatch?.labels?.property || '_unassigned'
           const accFolder = await findOrCreateFolder(driveToken, accountName, userRow.drive_folder_id)
           const reviewFolder = await findOrCreateFolder(driveToken, '_for_review', accFolder.id)
-          const driveResult = await uploadFileToDrive(driveToken, filename + ext, driveMimeType, driveFileBase64, reviewFolder.id)
+          const driveResult = await uploadFileToDrive(driveToken, filename + ext, driveMimeType, driveFileBase64, reviewFolder.id, driveConvertMimeType)
           if (driveResult?.id) {
             await serviceClient.from('receipts').update({ drive_file_id: driveResult.id }).eq('id', receipt.id)
           }
