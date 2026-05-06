@@ -220,19 +220,41 @@ export default async function handler(req, res) {
 
     // Create a shortcut "Shared - {AccountName}" in the recipient's Récu root folder
     try {
-      const recipientToken = await getValidToken(userId, serviceClient)
-      const [{ data: recipientUser }, { data: ownerDim }] = await Promise.all([
+      const [recipientToken, ownerToken] = await Promise.all([
+        getValidToken(userId, serviceClient),
+        getValidToken(share.owner_id, serviceClient),
+      ])
+      const [{ data: recipientUser }, { data: ownerUser }, { data: ownerDim }] = await Promise.all([
         serviceClient.from('users').select('drive_folder_id').eq('id', userId).single(),
-        serviceClient.from('dimensions').select('drive_folder_id')
+        serviceClient.from('users').select('drive_folder_id').eq('id', share.owner_id).single(),
+        serviceClient.from('dimensions').select('id, drive_folder_id')
           .eq('user_id', share.owner_id).eq('type', 'account').eq('name', share.account_name).maybeSingle(),
       ])
-      if (recipientToken && recipientUser?.drive_folder_id && ownerDim?.drive_folder_id) {
-        await createShortcut(
-          recipientToken,
-          `Shared - ${share.account_name}`,
-          ownerDim.drive_folder_id,
-          recipientUser.drive_folder_id,
-        )
+
+      if (recipientToken && recipientUser?.drive_folder_id) {
+        // Resolve the owner's account folder — create it if it doesn't exist yet
+        let accountFolderId = ownerDim?.drive_folder_id
+        if (!accountFolderId && ownerToken && ownerUser?.drive_folder_id) {
+          const folder = await findOrCreateFolder(ownerToken, share.account_name, ownerUser.drive_folder_id)
+          accountFolderId = folder.id
+          // Persist so future lookups are fast
+          if (ownerDim?.id) {
+            await serviceClient.from('dimensions').update({ drive_folder_id: folder.id }).eq('id', ownerDim.id)
+          } else {
+            await serviceClient.from('dimensions').insert({
+              user_id: share.owner_id, type: 'account', name: share.account_name, drive_folder_id: folder.id,
+            })
+          }
+        }
+
+        if (accountFolderId) {
+          await createShortcut(
+            recipientToken,
+            `Shared - ${share.account_name}`,
+            accountFolderId,
+            recipientUser.drive_folder_id,
+          )
+        }
       }
     } catch (e) {
       console.error('shares: create shortcut (non-fatal):', e?.message)
