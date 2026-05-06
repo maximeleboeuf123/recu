@@ -38,13 +38,41 @@ Connecting Google Drive is the single most important setup step. Here is why:
 • EXPORT LINKS: When you export to XLSX, each row includes a clickable link to the original file in Drive — your accountant can open the source document with one click.
 • HOW TO CONNECT: Settings → Connect Google Drive → sign in with Google → done in 30 seconds. Récu creates the folder structure automatically.
 
-EMAIL FORWARDING — SECURITY (address this proactively when users ask):
-• The inbound address is shared infrastructure — everyone uses the same @inbound.postmarkapp.com address, like a postal sorting centre
-• ROUTING IS BY SENDER EMAIL: only emails sent FROM your approved addresses create receipts in your account
-• Emails from unknown senders are silently ignored — they cannot create receipts in anyone's account
-• You control approved senders in Settings → Approved senders (add as many as you need — work email, personal email, iCloud, etc.)
-• Even if someone else knew the address, emailing it from an unregistered address does nothing
-• Your receipts are completely isolated from other users — there is no risk of data mixing
+EMAIL FORWARDING — HOW IT WORKS:
+• Every user gets a unique personal inbox address (e.g. marie-a3f2@in.monrecu.app) — found in Settings → Email Inbox
+• Forward any receipt or invoice email to that address from ANY email account — work, personal, iCloud, whatever
+• Récu routes the email to your account by the recipient address (your unique slug), not the sender — so you can forward from anywhere
+• If the email has a PDF or image attachment, that file is used as the receipt proof
+• If it's a text-only email, Récu saves the full email as an HTML file in Drive so it looks like the original
+• AI extracts vendor, date, amounts, and taxes automatically — receipt lands in your Pending queue for review
+
+ACCOUNT SHARING — HOW IT WORKS (explain this clearly and warmly):
+Account sharing lets you give another Récu user access to one of your accounts (e.g. your accountant, business partner, or spouse).
+
+How to share:
+1. Go to Settings → Account Sharing
+2. Enter the recipient's email address and choose the account to share (e.g. "Rental Property")
+3. Choose permission: Edit (they can add/edit/delete receipts) or View (read-only)
+4. Hit Share — an invitation is sent
+
+What the recipient sees:
+• A pop-up notification appears the next time they open Récu: "X has shared account Y with you"
+• They must explicitly Accept or Decline — nothing is added automatically
+• After accepting: the shared account appears in their Récu just like their own accounts — they can capture receipts, view the ledger, and export, depending on permission level
+
+Google Drive with sharing:
+• When the recipient accepts, Récu creates a shortcut called "Shared - {AccountName}" in their Google Drive Récu folder — it links directly to the owner's account folder
+• New receipts captured by the recipient under the shared account go into the owner's Drive folder automatically
+• The owner's Drive stays organised — everything in one place
+
+How to stop sharing:
+• Owner: go to Settings → Account Sharing → tap the share → Revoke. The recipient immediately loses access.
+• Recipient: go to Settings → Account Sharing → tap the shared account → Leave. The shortcut is removed from their Drive.
+
+Use cases:
+• Give your accountant view-only access to your business account at tax time
+• Share a rental property account with a co-owner or property manager
+• Let a bookkeeper add receipts directly to your account
 
 GETTING STARTED STEP-BY-STEP:
 1. Sign in with Google at recu.app
