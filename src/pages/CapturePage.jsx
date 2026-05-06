@@ -159,6 +159,23 @@ export default function CapturePage() {
         }
       }
 
+      // Copy Drive file from template receipt when no new photo was attached
+      if (templateReceipt?.drive_file_id && !photoFile && inserted?.length > 0 && !isRec && driveState) {
+        try {
+          const copyRes = await fetch('/api/drive/copy-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ sourceFileId: templateReceipt.drive_file_id, targetReceiptId: inserted[0].id }),
+          })
+          if (copyRes.ok) {
+            const copyData = await copyRes.json()
+            if (copyData.fileId) organizeFile(inserted[0].id)
+          }
+        } catch (e) {
+          console.error('Drive copy (non-critical):', e)
+        }
+      }
+
       await refresh()
       setCreateMode(null)
       setTemplateReceipt(null)

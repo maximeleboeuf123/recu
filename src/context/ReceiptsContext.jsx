@@ -178,6 +178,11 @@ export function ReceiptsProvider({ children }) {
   }, [])
 
   const duplicateReceipt = useCallback(async (receipt) => {
+    const origName = receipt.filename || null
+    const copyName = origName
+      ? (origName.includes('.') ? origName.replace(/(\.[^.]+)$/, '_copy$1') : `${origName}_copy`)
+      : null
+
     const { data: newRow, error } = await supabase.from('receipts').insert({
       user_id: receipt.user_id,
       status: 'confirmed',
@@ -200,6 +205,7 @@ export function ReceiptsProvider({ children }) {
       vendor_neq: receipt.vendor_neq,
       vendor_bn: receipt.vendor_bn,
       labels: receipt.labels || {},
+      filename: copyName,
       confidence_scores: {},
       extracted_raw: {},
       edit_history: [],

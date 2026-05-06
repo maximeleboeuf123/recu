@@ -39,15 +39,19 @@ export default async function handler(req, res) {
 
     const { data: userData } = await serviceClient
       .from('users')
-      .select('drive_inbox_id, drive_folder_id')
+      .select('drive_folder_id')
       .eq('id', user.userId)
       .single()
 
-    const folderId = userData?.drive_inbox_id || userData?.drive_folder_id
+    const folderId = userData?.drive_folder_id
     if (!folderId) return res.status(200).json({ skipped: 'no folder' })
 
     const baseName = (receipt.filename || 'receipt').replace(/^tmp_[^_]+_/, '')
-    const tempName = `tmp_${Date.now()}_${baseName}`
+    const dotIdx = baseName.lastIndexOf('.')
+    const nameWithCopy = dotIdx >= 0
+      ? `${baseName.slice(0, dotIdx)}_copy${baseName.slice(dotIdx)}`
+      : `${baseName}_copy`
+    const tempName = `tmp_${Date.now()}_${nameWithCopy}`
 
     const copied = await copyFileToDrive(accessToken, sourceFileId, folderId, tempName)
 
