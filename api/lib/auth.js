@@ -23,5 +23,5 @@ export function getUserFromReq(req) {
   if (!token) return null
   const payload = decodeJwtPayload(token)
   if (!payload?.sub || !payload?.exp || payload.exp < Date.now() / 1000) return null
-  return { userId: payload.sub, token }
+  return { userId: payload.sub, email: payload.email || null, token }
 }

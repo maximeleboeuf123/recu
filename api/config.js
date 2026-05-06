@@ -19,14 +19,14 @@ export default async function handler(req, res) {
     const serviceClient = getServiceClient()
     const { data: userData } = await serviceClient
       .from('users')
-      .select('inbox_slug, email')
+      .select('inbox_slug')
       .eq('id', user.userId)
       .single()
 
     let slug = userData?.inbox_slug
 
-    if (!slug && userData?.email) {
-      slug = generateSlug(userData.email, user.userId)
+    if (!slug && user.email) {
+      slug = generateSlug(user.email, user.userId)
       await serviceClient.from('users').update({ inbox_slug: slug }).eq('id', user.userId)
     }
 
