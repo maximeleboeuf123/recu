@@ -56,18 +56,16 @@ function pickBestAttachment(attachments) {
   return pool.sort((a, b) => (b.ContentLength || 0) - (a.ContentLength || 0))[0]
 }
 
-// Build clean HTML from plain text only — email HTML templates are too complex for Google Doc conversion
-function buildEmailHtml({ from, subject, textBody, htmlBody }) {
-  const body = textBody || stripHtml(htmlBody) || ''
-  const escaped = body
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>')
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
-<h2 style="font-family:sans-serif;font-size:18px;margin:0 0 8px">${(subject || '(no subject)').replace(/</g, '&lt;')}</h2>
-<p style="font-family:sans-serif;font-size:12px;color:#888;margin:0 0 20px">From: ${(from || '').replace(/</g, '&lt;')}</p>
-<hr style="border:none;border-top:1px solid #ddd;margin:0 0 20px">
-<p style="font-family:sans-serif;font-size:14px;color:#333;white-space:pre-wrap;line-height:1.6">${escaped}</p>
-</body></html>`
+function buildEmailTxt({ from, subject, textBody, htmlBody }) {
+  const body = (textBody || stripHtml(htmlBody) || '').trim().slice(0, 2000)
+  return [
+    `Subject: ${subject || '(no subject)'}`,
+    `From:    ${from || ''}`,
+    '',
+    '─'.repeat(40),
+    '',
+    body,
+  ].join('\n')
 }
 
 async function sendReply(to, subject, receipt) {
@@ -184,15 +182,13 @@ async function _handler(req, res) {
     mimeType = best.ContentType
   }
 
-  // For text-only emails, convert to a Google Doc so it renders properly in Drive
+  // For text-only emails, save a clean plain text summary — always readable in Drive
   let driveFileBase64 = fileBase64
   let driveMimeType = mimeType
-  let driveConvertMimeType
   if (isTextFallback) {
-    const html = buildEmailHtml({ from: From, subject: Subject, textBody: TextBody, htmlBody: HtmlBody })
-    driveFileBase64 = Buffer.from(html).toString('base64')
-    driveMimeType = 'text/html'
-    driveConvertMimeType = 'application/vnd.google-apps.document'
+    const txt = buildEmailTxt({ from: From, subject: Subject, textBody: TextBody, htmlBody: HtmlBody })
+    driveFileBase64 = Buffer.from(txt).toString('base64')
+    driveMimeType = 'text/plain'
   }
 
   // Extract with Claude
@@ -244,8 +240,7 @@ async function _handler(req, res) {
   const patternMatch = findPatternMatch(patterns, extracted.vendor)
 
   const filename = generateFilename(extracted, Subject)
-  const ext = driveConvertMimeType === 'application/vnd.google-apps.document' ? ''
-    : mimeType === 'application/pdf' ? '.pdf'
+  const ext = mimeType === 'application/pdf' ? '.pdf'
     : mimeType.startsWith('image/') ? '.jpg'
     : '.txt'
 
@@ -296,7 +291,7 @@ async function _handler(req, res) {
           const accountName = patternMatch?.labels?.property || '_unassigned'
           const accFolder = await findOrCreateFolder(driveToken, accountName, userRow.drive_folder_id)
           const reviewFolder = await findOrCreateFolder(driveToken, '_for_review', accFolder.id)
-          const driveResult = await uploadFileToDrive(driveToken, filename + ext, driveMimeType, driveFileBase64, reviewFolder.id, driveConvertMimeType)
+          const driveResult = await uploadFileToDrive(driveToken, filename + ext, driveMimeType, driveFileBase64, reviewFolder.id)
           if (driveResult?.id) {
             await serviceClient.from('receipts').update({ drive_file_id: driveResult.id }).eq('id', receipt.id)
           }
