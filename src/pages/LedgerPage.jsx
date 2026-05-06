@@ -26,6 +26,7 @@ export default function LedgerPage() {
   const [expandedId, setExpandedId] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
   const [toast, setToast] = useState(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState(null)
 
   const lang = i18n.language === 'en' ? 'en' : 'fr'
 
@@ -128,7 +129,12 @@ export default function LedgerPage() {
     if (!ok) return showToast(t('common.error'))
     if (receipt?.drive_file_id) deleteFromDrive(receipt.drive_file_id)
     setExpandedId(null)
+    setPendingDeleteId(null)
     showToast(t('review.deleted'))
+  }
+
+  const handleRequestDelete = (id) => {
+    setPendingDeleteId(id)
   }
 
   const handleSave = async (id, data, _recurring, patternInfo) => {
@@ -448,7 +454,7 @@ export default function LedgerPage() {
                 onReplaceFile={(file) => handleReplaceFile(r.id, file)}
               />
             ) : (
-              <LedgerRow key={r.id} receipt={r} onClick={() => setExpandedId(r.id)} onDuplicate={handleDuplicate} onDelete={handleDelete} />
+              <LedgerRow key={r.id} receipt={r} onClick={() => setExpandedId(r.id)} onDuplicate={handleDuplicate} onRequestDelete={handleRequestDelete} />
             ),
           )}
         </div>
@@ -459,13 +465,44 @@ export default function LedgerPage() {
           {toast}
         </div>
       )}
+
+      {pendingDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setPendingDeleteId(null)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative w-full max-w-lg bg-white rounded-t-[16px] p-6 pb-10 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-base font-semibold text-[#1A1A18] mb-1">
+              {lang === 'en' ? 'Delete this receipt?' : 'Supprimer ce reçu?'}
+            </p>
+            <p className="text-sm text-muted mb-5">
+              {lang === 'en' ? 'This action cannot be undone.' : 'Cette action est irréversible.'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPendingDeleteId(null)}
+                className="flex-1 py-3 rounded-[10px] border border-border text-sm font-medium text-muted hover:text-[#1A1A18] transition-colors"
+              >
+                {lang === 'en' ? 'Cancel' : 'Annuler'}
+              </button>
+              <button
+                onClick={() => handleDelete(pendingDeleteId)}
+                className="flex-1 py-3 rounded-[10px] bg-error text-white text-sm font-semibold transition-colors hover:bg-error/90"
+              >
+                {lang === 'en' ? 'Delete' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function LedgerRow({ receipt, onClick, onDuplicate, onDelete }) {
+function LedgerRow({ receipt, onClick, onDuplicate, onRequestDelete }) {
   const isPending = receipt.status === 'pending'
-  const [confirming, setConfirming] = useState(null) // null | 'copy' | 'delete'
+  const [confirmingCopy, setConfirmingCopy] = useState(false)
 
   return (
     <div className="flex items-center bg-surface border border-border rounded-[8px] hover:border-primary/40 transition-colors">
@@ -493,43 +530,34 @@ function LedgerRow({ receipt, onClick, onDuplicate, onDelete }) {
         </p>
       </div>
       <div className="flex items-stretch border-l border-border/60 flex-shrink-0">
-        {confirming ? (
+        {confirmingCopy ? (
           <>
             <button
-              onClick={(e) => { e.stopPropagation(); setConfirming(null) }}
+              onClick={(e) => { e.stopPropagation(); setConfirmingCopy(false) }}
               className="px-2.5 py-4 text-muted hover:text-[#1A1A18] transition-colors"
               aria-label="Cancel"
             >
               <X size={13} />
             </button>
             <button
-              onClick={(e) => {
-                e.stopPropagation()
-                if (confirming === 'copy') onDuplicate?.(receipt)
-                else onDelete?.(receipt.id)
-                setConfirming(null)
-              }}
-              className={`px-3 py-4 transition-colors border-l border-border/60 ${
-                confirming === 'copy'
-                  ? 'text-primary hover:text-primary/70'
-                  : 'text-error hover:text-error/70'
-              }`}
-              aria-label={confirming === 'copy' ? 'Confirm copy' : 'Confirm delete'}
+              onClick={(e) => { e.stopPropagation(); onDuplicate?.(receipt); setConfirmingCopy(false) }}
+              className="px-3 py-4 text-primary hover:text-primary/70 transition-colors border-l border-border/60"
+              aria-label="Confirm copy"
             >
-              {confirming === 'copy' ? <Check size={14} /> : <Trash2 size={14} />}
+              <Check size={14} />
             </button>
           </>
         ) : (
           <>
             <button
-              onClick={(e) => { e.stopPropagation(); setConfirming('copy') }}
+              onClick={(e) => { e.stopPropagation(); setConfirmingCopy(true) }}
               className="px-3 py-4 text-muted hover:text-primary transition-colors"
               aria-label="Duplicate"
             >
               <Copy size={14} />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); setConfirming('delete') }}
+              onClick={(e) => { e.stopPropagation(); onRequestDelete?.(receipt.id) }}
               className="px-3 py-4 text-muted hover:text-error transition-colors border-l border-border/60"
               aria-label="Delete"
             >
