@@ -44,11 +44,14 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    fetch('/api/config')
+    if (!session?.access_token) return
+    fetch('/api/config', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.inboxEmail) setInboxEmail(d.inboxEmail) })
       .catch(() => {})
-  }, [])
+  }, [session?.access_token])
 
   const handleCopyInbox = () => {
     if (!inboxEmail) return

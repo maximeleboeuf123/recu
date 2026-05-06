@@ -128,19 +128,33 @@ async function _handler(req, res) {
     }
   } catch { return res.status(200).end() }
 
-  const { From, MessageID, Subject, TextBody, HtmlBody, Attachments = [] } = body || {}
-
-  // Look up user by sender email
-  const senderEmail = extractEmail(From)
-  if (!senderEmail) return res.status(200).end()
+  const { From, To, OriginalRecipient, MessageID, Subject, TextBody, HtmlBody, Attachments = [] } = body || {}
 
   const serviceClient = getServiceClient()
 
-  // Route by primary Récu account email only (aliases removed to prevent routing conflicts)
-  const { data: userId } = await serviceClient
-    .rpc('get_user_id_by_email', { lookup_email: senderEmail })
+  // Route by recipient slug (personal inbox address) — primary method
+  let userId = null
+  const toRaw = OriginalRecipient || To || ''
+  const toEmail = extractEmail(toRaw)
+  const toSlug = toEmail?.split('@')[0]?.toLowerCase()
+  if (toSlug) {
+    const { data: bySlug } = await serviceClient
+      .from('users')
+      .select('id')
+      .eq('inbox_slug', toSlug)
+      .maybeSingle()
+    userId = bySlug?.id || null
+  }
 
-  if (!userId) return res.status(200).end() // unknown sender — silently ack
+  // Fallback: route by sender email for users who haven't been assigned a slug yet
+  const senderEmail = extractEmail(From)
+  if (!userId && senderEmail) {
+    const { data } = await serviceClient
+      .rpc('get_user_id_by_email', { lookup_email: senderEmail })
+    userId = data || null
+  }
+
+  if (!userId) return res.status(200).end()
 
   // MessageID dedup
   if (MessageID) {
