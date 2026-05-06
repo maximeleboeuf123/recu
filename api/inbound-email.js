@@ -299,16 +299,18 @@ async function _handler(req, res) {
   }
 
   // For text-only emails, generate a clean PDF with extracted data + email body
+  console.log('[email] isTextFallback:', isTextFallback, '| attachments:', Attachments?.length ?? 0, '| validAttachments:', validAttachments.length)
   if (isTextFallback) {
     try {
       const pdfBuf = await buildEmailPdf({ from: From, subject: Subject, textBody: TextBody, htmlBody: HtmlBody, extracted })
       driveFileBase64 = pdfBuf.toString('base64')
       driveMimeType = 'application/pdf'
+      console.log('[email] PDF built OK, size:', pdfBuf.length)
     } catch (e) {
-      console.error('Email PDF generation error:', e?.message)
-      // fallback: keep original base64 text
+      console.error('[email] PDF generation FAILED:', e?.message, e?.stack?.split('\n')[1])
     }
   }
+  console.log('[email] driveMimeType:', driveMimeType, '| ext will be:', driveMimeType === 'application/pdf' ? '.pdf' : '.txt')
 
   const confidenceScores = applyTaxCalculations(extracted)
 
