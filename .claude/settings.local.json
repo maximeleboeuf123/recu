@@ -30,7 +30,9 @@
       "Bash(node -e \"const d=require\\('C:/Users/Maxim/deps.json'\\); const deps=d.deployments||[]; deps.forEach\\(dep=>console.log\\(dep.uid,dep.state,dep.created\\)\\);\")",
       "Bash(curl -s 'https://api.vercel.com/v3/deployments/dpl_5ydqLWxY5JzbLjpFpooKU2CuHAJY/events?teamId=team_PhDpXHIkAOa433D3ykeFNlTf&limit=100&direction=backward' -H 'Authorization: Bearer vca_35nKlAsLfZ5KlDcvBOQzmWAg5fJlL276bmqI4vhV0rGaJAnF8T0qr9jG' -o C:/Users/Maxim/events.json)",
       "Bash(git remote *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(vercel ls *)",
+      "Bash(npm uninstall *)"
     ]
   }
 }
