@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Search, BookOpen, SlidersHorizontal, X, Copy, Trash2 } from 'lucide-react'
+import { Search, BookOpen, SlidersHorizontal, X, Copy, Trash2, Check } from 'lucide-react'
 import { useReceipts } from '../hooks/useReceipts'
 import { usePatterns } from '../hooks/usePatterns'
 import { useDriveActions } from '../hooks/useDriveActions'
@@ -465,7 +465,7 @@ export default function LedgerPage() {
 
 function LedgerRow({ receipt, onClick, onDuplicate, onDelete }) {
   const isPending = receipt.status === 'pending'
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [confirming, setConfirming] = useState(null) // null | 'copy' | 'delete'
 
   return (
     <div className="flex items-center bg-surface border border-border rounded-[8px] hover:border-primary/40 transition-colors">
@@ -493,34 +493,43 @@ function LedgerRow({ receipt, onClick, onDuplicate, onDelete }) {
         </p>
       </div>
       <div className="flex items-stretch border-l border-border/60 flex-shrink-0">
-        {confirmingDelete ? (
+        {confirming ? (
           <>
             <button
-              onClick={(e) => { e.stopPropagation(); setConfirmingDelete(false) }}
+              onClick={(e) => { e.stopPropagation(); setConfirming(null) }}
               className="px-2.5 py-4 text-muted hover:text-[#1A1A18] transition-colors"
               aria-label="Cancel"
             >
               <X size={13} />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); onDelete?.(receipt.id) }}
-              className="px-3 py-4 text-error hover:text-error/70 transition-colors border-l border-border/60"
-              aria-label="Confirm delete"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (confirming === 'copy') onDuplicate?.(receipt)
+                else onDelete?.(receipt.id)
+                setConfirming(null)
+              }}
+              className={`px-3 py-4 transition-colors border-l border-border/60 ${
+                confirming === 'copy'
+                  ? 'text-primary hover:text-primary/70'
+                  : 'text-error hover:text-error/70'
+              }`}
+              aria-label={confirming === 'copy' ? 'Confirm copy' : 'Confirm delete'}
             >
-              <Trash2 size={14} />
+              {confirming === 'copy' ? <Check size={14} /> : <Trash2 size={14} />}
             </button>
           </>
         ) : (
           <>
             <button
-              onClick={(e) => { e.stopPropagation(); onDuplicate?.(receipt) }}
+              onClick={(e) => { e.stopPropagation(); setConfirming('copy') }}
               className="px-3 py-4 text-muted hover:text-primary transition-colors"
               aria-label="Duplicate"
             >
               <Copy size={14} />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true) }}
+              onClick={(e) => { e.stopPropagation(); setConfirming('delete') }}
               className="px-3 py-4 text-muted hover:text-error transition-colors border-l border-border/60"
               aria-label="Delete"
             >
