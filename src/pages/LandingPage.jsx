@@ -150,8 +150,8 @@ export default function LandingPage() {
           {lang === 'fr' ? 'Confidentialité' : 'Privacy'}
         </a>
         <span>·</span>
-        <a href="mailto:hello@monrecu.app" className="hover:text-primary transition-colors">
-          hello@monrecu.app
+        <a href="mailto:admin@monrecu.app" className="hover:text-primary transition-colors">
+          admin@monrecu.app
         </a>
       </footer>
     </div>

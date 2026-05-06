@@ -217,7 +217,7 @@ export default function GuidePage() {
           {lang === 'en' ? 'Still have questions?' : 'Encore des questions ?'}
         </p>
         <a
-          href="mailto:hello@monrecu.app"
+          href="mailto:admin@monrecu.app"
           className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
         >
           <Mail size={13} />
