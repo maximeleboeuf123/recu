@@ -60,11 +60,8 @@ export default function InstallPrompt() {
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/30 z-40"
-        onClick={dismiss}
-      />
+      {/* Backdrop — non-dismissible, forces explicit choice */}
+      <div className="fixed inset-0 bg-black/50 z-40" />
 
       {/* Bottom sheet */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface rounded-t-[20px] shadow-xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] animate-slide-up">
