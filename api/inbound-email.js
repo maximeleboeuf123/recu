@@ -56,32 +56,18 @@ function pickBestAttachment(attachments) {
   return pool.sort((a, b) => (b.ContentLength || 0) - (a.ContentLength || 0))[0]
 }
 
+// Build clean HTML from plain text only — email HTML templates are too complex for Google Doc conversion
 function buildEmailHtml({ from, subject, textBody, htmlBody }) {
-  if (htmlBody) {
-    // Inject a small header bar above the original HTML so context is clear
-    const header = `<div style="font-family:sans-serif;font-size:12px;color:#666;background:#f5f5f5;border-bottom:1px solid #ddd;padding:10px 16px;margin-bottom:0">
-      <strong>From:</strong> ${from || ''} &nbsp;|&nbsp; <strong>Subject:</strong> ${subject || '(no subject)'}
-    </div>`
-    // Insert header before <body> if present, otherwise prepend
-    if (/<body/i.test(htmlBody)) {
-      return htmlBody.replace(/(<body[^>]*>)/i, `$1${header}`)
-    }
-    return header + htmlBody
-  }
-  // Plain text fallback — wrap in minimal HTML for readability
-  const escaped = (textBody || '')
+  const body = textBody || stripHtml(htmlBody) || ''
+  const escaped = body
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/\n/g, '<br>')
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    body{font-family:sans-serif;font-size:14px;color:#333;max-width:680px;margin:32px auto;padding:0 16px}
-    .header{font-size:12px;color:#666;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px 14px;margin-bottom:20px}
-  </style></head><body>
-    <div class="header">
-      <strong>From:</strong> ${from || ''}<br>
-      <strong>Subject:</strong> ${subject || '(no subject)'}
-    </div>
-    <div>${escaped}</div>
-  </body></html>`
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<h2 style="font-family:sans-serif;font-size:18px;margin:0 0 8px">${(subject || '(no subject)').replace(/</g, '&lt;')}</h2>
+<p style="font-family:sans-serif;font-size:12px;color:#888;margin:0 0 20px">From: ${(from || '').replace(/</g, '&lt;')}</p>
+<hr style="border:none;border-top:1px solid #ddd;margin:0 0 20px">
+<p style="font-family:sans-serif;font-size:14px;color:#333;white-space:pre-wrap;line-height:1.6">${escaped}</p>
+</body></html>`
 }
 
 async function sendReply(to, subject, receipt) {
