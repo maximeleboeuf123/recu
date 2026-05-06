@@ -4,6 +4,7 @@ import BottomNav from './BottomNav'
 import TopNav from './TopNav'
 import MobileHeader from './MobileHeader'
 import ShareInviteModal from './ShareInviteModal'
+import InstallPrompt from './InstallPrompt'
 import { useReceipts } from '../hooks/useReceipts'
 import { useShares } from '../hooks/useShares'
 
@@ -54,6 +55,7 @@ export default function Layout() {
           onDone={() => setShowShareModal(false)}
         />
       )}
+      {!isDesktop && <InstallPrompt />}
     </div>
   )
 }
